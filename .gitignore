@@ -132,3 +132,8 @@ dist
 # VS devcontainers & GitHub files
 devcontainer.json
 dependabot.yml
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
