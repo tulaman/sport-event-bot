@@ -15,7 +15,7 @@ bot.catch((err, ctx) => {
 
 // Start command
 bot.start((ctx) => {
-    ctx.reply('Welcome to the bot!')
+    ctx.reply(config.messages.start)
 })
 
 // Help command
@@ -26,7 +26,7 @@ bot.command('help', (ctx) => {
 // Commands to interact with the bot
 // - Create a new run
 bot.command('create', (ctx) => {
-    ctx.reply('Creating a new run')
+    ctx.reply(config.messages.choose_date)
 })
 
 // - Find runs for today, this week, this month
