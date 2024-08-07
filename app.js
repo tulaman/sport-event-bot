@@ -1,6 +1,7 @@
 require('dotenv').config()
 const config = require('./config')
 const { Telegraf, Markup } = require('telegraf')
+const { db, loadSessionFromDatabase, saveSessionToDatabase } = require('./db')
 
 const bot = new Telegraf(process.env.TG_TOKEN)
 
@@ -13,6 +14,18 @@ bot.catch((err, ctx) => {
     }
 })
 
+bot.use(async (ctx, next) => {
+    const userId = ctx.from && ctx.from.id
+    if (userId) {
+        ctx.session = await loadSessionFromDatabase(userId)
+    }
+
+    await next()
+    // This next line will only run after all other middlewares and handlers are done
+
+    await saveSessionToDatabase(userId, ctx.session);
+})
+
 // Start command
 bot.start((ctx) => {
     ctx.reply(config.messages.start)
@@ -20,12 +33,13 @@ bot.start((ctx) => {
 
 // Help command
 bot.command('help', (ctx) => {
-    ctx.reply('Help message')
+    ctx.reply(config.messages.start)
 })
 
 // Commands to interact with the bot
 // - Create a new run
 bot.command('create', (ctx) => {
+    ctx.session = { test: '123' }
     ctx.reply(config.messages.choose_date)
 })
 
@@ -39,8 +53,10 @@ bot.command('my_runs', (ctx) => {
     ctx.reply('Your runs')
 })
 
+
 bot.launch()
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
+

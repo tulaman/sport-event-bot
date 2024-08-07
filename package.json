@@ -9,6 +9,8 @@
     "dependencies": {
         "dotenv": "^16.4.5",
         "js-yaml": "^4.1.0",
+        "sequelize": "^6.37.3",
+        "sqlite3": "^5.1.7",
         "telegraf": "^4.16.3"
     },
     "devDependencies": {
