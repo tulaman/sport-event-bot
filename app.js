@@ -78,7 +78,7 @@ bot.command('find', async (ctx) => {
             }
             else {
                 buttons.push(
-                    Markup.button.callback('Присоединиться', 'join'),
+                    Markup.button.callback('✅ Присоединиться', 'join'),
                 )
             }
             const keyboard = Markup.inlineKeyboard(
@@ -131,6 +131,15 @@ bot.command('my_events', async (ctx) => {
     }
 })
 
+
+for (const et of config.event_types) {
+    bot.action(et, (ctx) => {
+        ctx.session.new_event['type'] = et
+        ctx.session.state = 'choose_location'
+        ctx.replyWithHTML(config.messages.choose_location)
+    })
+}
+
 // Handler on any text from user
 bot.on(message('text'), async (ctx) => {
 
@@ -152,6 +161,10 @@ bot.on(message('text'), async (ctx) => {
     }
 
     // Dispatch object (all logic here)
+    const buttons = []
+    for (const et of config.event_types) {
+        buttons.push([Markup.button.callback(et, et)])
+    }
     const dispatch = {
         'choose_date': {
             next: 'choose_time',
@@ -162,6 +175,7 @@ bot.on(message('text'), async (ctx) => {
         'choose_time': {
             next: 'choose_type',
             message: config.messages.choose_type,
+            keyboard: Markup.inlineKeyboard(buttons),
             attr: 'time',
             validation: validate_time
         },
@@ -209,7 +223,7 @@ bot.on(message('text'), async (ctx) => {
         ctx.session.new_event[mode.attr] = ctx.message.text
         ctx.session.state = mode.next
 
-        await ctx.reply(mode.message)
+        await ctx.replyWithHTML(mode.message, mode.keyboard)
     }
     else {
         ctx.reply(config.messages.unknown_command)
