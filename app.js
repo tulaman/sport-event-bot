@@ -78,15 +78,20 @@ bot.command('find', async (ctx) => {
             }
             else {
                 buttons.push(
-                    Markup.button.callback('✅ Присоединиться', 'join'),
+                    Markup.button.callback('✅ Присоединиться', `join-${event.id}`),
                 )
             }
             const keyboard = Markup.inlineKeyboard(
                 buttons
             )
+            const participants = []
+            for (const x of await event.getParticipants()) {
+                participants.push(`@${x.name}`)
+            }
             const message = mustache.render(config.messages.event_info, {
                 title: formatDate(event.date),
                 event: event,
+                participants: participants.join(', '),
                 user: ctx.user
             })
             ctx.replyWithHTML(message, keyboard)
@@ -115,7 +120,7 @@ bot.command('my_events', async (ctx) => {
             }
             else {
                 buttons.push(
-                    Markup.button.callback('Отказаться', 'unjoin'),
+                    Markup.button.callback('Отказаться', `unjoin-${event.id}`),
                 )
             }
             const keyboard = Markup.inlineKeyboard(
@@ -153,12 +158,16 @@ bot.on('callback_query', async (ctx) => {
         // Publish the event
         ctx.reply(config.messages.event_published)
     }
-    else if (callbackData === 'join') {
+    else if (callbackData.startsWith('join')) {
         // Join the event
+        const event = await Event.findByPk(eventId)
+        await event.addParticipant(ctx.user)
         ctx.reply(config.messages.event_joined)
     }
     else if (callbackData === 'unjoin') {
         // Unjoin the event
+        const event = await Event.findByPk(eventId)
+        await event.removeParticipant(ctx.user)
         ctx.reply(config.messages.event_unjoined)
     }
     else if (callbackData === 'edit') {

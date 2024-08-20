@@ -91,8 +91,12 @@ const User = sequelize.define(
     }
 )
 
+
+
 User.hasMany(Event, { foreignKey: 'author_id' })
 Event.belongsTo(User, { foreignKey: 'author_id', as: 'author' })
+Event.belongsToMany(User, { through: 'Participant', foreignKey: 'event_id', as: 'participants' })
+User.belongsToMany(Event, { through: 'Participant', foreignKey: 'user_id', as: 'events_as_participant' })
 
 const connect = async () => {
     try {
