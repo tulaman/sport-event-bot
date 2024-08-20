@@ -29,12 +29,77 @@ const Session = sequelize.define(
     }
 )
 
+const Event = sequelize.define(
+    'event',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true
+        },
+        date: {
+            type: DataTypes.DATE,
+            allowNull: false
+        },
+        time: {
+            type: DataTypes.TIME,
+            allowNull: false
+        },
+        type: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        location: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        distance: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        pace: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        additional_info: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+        author_id: {
+            type: DataTypes.INTEGER,
+            allowNull: false
+        }
+    }
+)
+
+const User = sequelize.define(
+    'user',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true
+        },
+        name: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        telegram_id: {
+            type: DataTypes.STRING,
+            allowNull: false
+        }
+    }
+)
+
+User.hasMany(Event, { foreignKey: 'author_id' })
+Event.belongsTo(User, { foreignKey: 'author_id', as: 'author' })
+
 const connect = async () => {
     try {
         await sequelize.authenticate()
         console.log('Connection has been established successfully.')
 
-        await sequelize.sync({ force: process.env.NODE_ENV === 'development' })
+        //await sequelize.sync({ force: process.env.NODE_ENV === 'development' })
         console.log('All models were synchronized successfully.')
     } catch (error) {
         console.error('Unable to connect to the database:', error)
@@ -64,4 +129,4 @@ const saveSessionToDatabase = async (userId, session) => {
     )
 }
 
-module.exports = { sequelize, loadSessionFromDatabase, saveSessionToDatabase }
+module.exports = { sequelize, loadSessionFromDatabase, saveSessionToDatabase, Event, User }

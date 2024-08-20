@@ -137,3 +137,5 @@ dependabot.yml
 .flaskenv*
 !.env.project
 !.env.vault
+
+*.sqlite
