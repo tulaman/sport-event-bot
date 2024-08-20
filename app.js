@@ -146,6 +146,10 @@ for (const et of config.event_types) {
 }
 
 // Catch all callback handler
+// TODO: 
+// - edit
+// - publish
+// - unjoin
 bot.on('callback_query', async (ctx) => {
     const callbackData = ctx.callbackQuery.data
     const eventId = callbackData.split('-')[1]
@@ -275,3 +279,11 @@ bot.launch()
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
+
+// TODO:
+// - my events: I'm an organizer / I'm a participant
+// - create event: convenient date typing
+// - edit event + notifications to participants
+// - notifications about event (1 hour before)
+// - different fields for different events (mostly skipping distance and pace for board games)
+// - enter date routine (using russian shortcuts like today, tomorrow, the next day after tomorrow, day of weeks etc)
