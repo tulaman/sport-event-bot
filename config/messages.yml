@@ -42,11 +42,14 @@ no_events: У вас пока нет мероприятий.
 no_new_events: Нет новых мероприятий. Используйте /create чтобы создать своё.
 
 event_info: |
-    📅 Дата: {{event.date}}
-    🕒 Время: {{event.time}}
-    👤 Автор: @{{event.author.name}}
+    <b>{{title}}</b>
+
     🏃 Тип: {{event.type}}
+    🕒 Время: {{event.time}}
     📍 Место: {{event.location}}
     📏 Расстояние: {{event.distance}}
     🏃‍♂️ Темп: {{event.pace}}
-    📝 Дополнительно: {{event.additional_info}}
+    👤 Автор: @{{event.author.name}}
+    📝 Описание: {{event.additional_info}}
+    👥 Участники: {{event.members}}
+    ℹ️ Присоединившись, как участник, вы будете получать уведомления об изменениях в мероприятии. А организатору будет проще планировать детали.

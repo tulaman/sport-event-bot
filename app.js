@@ -3,6 +3,7 @@ const config = require('./config')
 const { Telegraf, Markup } = require('telegraf')
 const { message } = require('telegraf/filters')
 const { db, loadSessionFromDatabase, saveSessionToDatabase, Event, User } = require('./db')
+const { formatDate } = require('./utils')
 const mustache = require('mustache')
 const sequelize = require('sequelize')
 const Op = sequelize.Op
@@ -84,6 +85,7 @@ bot.command('find', async (ctx) => {
                 buttons
             )
             const message = mustache.render(config.messages.event_info, {
+                title: formatDate(event.date),
                 event: event,
                 user: ctx.user
             })
@@ -120,6 +122,7 @@ bot.command('my_events', async (ctx) => {
                 buttons
             )
             const message = mustache.render(config.messages.event_info, {
+                title: formatDate(event.date),
                 event: event,
                 user: ctx.user
             })
