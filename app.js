@@ -109,7 +109,7 @@ bot.command('my_events', async (ctx) => {
             if (event.author.id == ctx.user.id) {
                 buttons.push(
                     [Markup.button.callback('Редактировать', 'edit')],
-                    [Markup.button.callback('Удалить', 'delete')],
+                    [Markup.button.callback('Удалить', `delete-${event.id}`)],
                     [Markup.button.callback('Опубликовать', 'publish')],
                 )
             }
@@ -139,6 +139,36 @@ for (const et of config.event_types) {
         ctx.replyWithHTML(config.messages.choose_location)
     })
 }
+
+// Catch all callback handler
+bot.on('callback_query', async (ctx) => {
+    const callbackData = ctx.callbackQuery.data
+    const eventId = callbackData.split('-')[1]
+    if (callbackData.startsWith('delete')) {
+        await Event.destroy({ where: { id: eventId } })
+        await ctx.deleteMessage()
+        await ctx.answerCbQuery(config.messages.event_deleted)
+    }
+    else if (callbackData === 'publish') {
+        // Publish the event
+        ctx.reply(config.messages.event_published)
+    }
+    else if (callbackData === 'join') {
+        // Join the event
+        ctx.reply(config.messages.event_joined)
+    }
+    else if (callbackData === 'unjoin') {
+        // Unjoin the event
+        ctx.reply(config.messages.event_unjoined)
+    }
+    else if (callbackData === 'edit') {
+        // Edit the event
+        ctx.reply(config.messages.event_edited)
+    }
+    else {
+        ctx.reply(config.messages.unknown_command)
+    }
+})
 
 // Handler on any text from user
 bot.on(message('text'), async (ctx) => {
