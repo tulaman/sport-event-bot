@@ -99,12 +99,22 @@ bot.command('find', async (ctx) => {
     }
 })
 
-// - List all runs created by me or runs I have joined
+
 bot.command('my_events', async (ctx) => {
+    ctx.replyWithHTML(config.messages.choose_category, Markup.inlineKeyboard(
+        [
+            [Markup.button.callback(config.messages.i_m_author, 'imauthor')],
+            [Markup.button.callback(config.messages.i_m_participant, 'imparticipant')]
+        ]))
+})
+
+// - List all runs created by me 
+bot.action('imauthor', async (ctx) => {
     const events = await Event.findAll({
         include: { model: User, as: 'author' },
         where: { author_id: ctx.user.id }
     })
+    await ctx.deleteMessage()
     if (events.length === 0) {
         ctx.reply(config.messages.no_events)
     }
@@ -131,6 +141,52 @@ bot.command('my_events', async (ctx) => {
                 event: event,
                 user: ctx.user
             })
+            ctx.replyWithHTML(message, keyboard)
+        }
+    }
+})
+
+
+// - List all runs I have joined to
+bot.action('imparticipant', async (ctx) => {
+    const userId = ctx.from.id
+    const user = await User.findOne({
+        include: [{
+            model: Event,
+            as: 'events_as_participant',
+            required: false
+        }],
+        where: { telegram_id: userId }
+    })
+    const events = user.events_as_participant
+    await ctx.deleteMessage()
+    if (events.length === 0) {
+        ctx.reply(config.messages.no_events)
+    }
+    else {
+        for (let event of events) {
+            const buttons = []
+            if (event.author.id == ctx.user.id) {
+                buttons.push(
+                    [Markup.button.callback('Редактировать', 'edit')],
+                    [Markup.button.callback('Удалить', `delete-${event.id}`)],
+                    [Markup.button.callback('Опубликовать', 'publish')],
+                )
+            }
+            else {
+                buttons.push(
+                    Markup.button.callback('Отказаться', `unjoin-${event.id}`),
+                )
+            }
+            const keyboard = Markup.inlineKeyboard(
+                buttons
+            )
+            const message = mustache.render(config.messages.event_info, {
+                title: formatDate(event.date),
+                event: event,
+                user: ctx.user
+            })
+
             ctx.replyWithHTML(message, keyboard)
         }
     }
