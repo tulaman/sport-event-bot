@@ -59,31 +59,24 @@ bot.command('create', (ctx) => {
 
 // - Find runs for today, this week, this month
 bot.command('find', async (ctx) => {
-    const events = await Event.findAll({
+    const events_full = await Event.findAll({
         include: { model: User, as: 'author' },
         where: {
             author_id: { [Op.ne]: ctx.user.id }
         }
     })
+    const events = []
+    for (let event of events_full) {
+        if (event.hasParticipant(ctx.user.id)) {
+            continue
+        }
+    }
     if (events.length === 0) {
         ctx.reply(config.messages.no_new_events)
     }
     else {
-        for (let event of events) {
-            const buttons = []
-            if (false) {
-                buttons.push(
-                    [Markup.button.callback('Опубликовать', 'publish')],
-                )
-            }
-            else {
-                buttons.push(
-                    Markup.button.callback('✅ Присоединиться', `join-${event.id}`),
-                )
-            }
-            const keyboard = Markup.inlineKeyboard(
-                buttons
-            )
+        for (const event of events) {
+            const keyboard = Markup.inlineKeyboard(Markup.button.callback('✅ Присоединиться', `join-${event.id}`))
             const participants = []
             for (const x of await event.getParticipants()) {
                 participants.push(`@${x.name}`)
@@ -120,26 +113,21 @@ bot.action('imauthor', async (ctx) => {
     }
     else {
         for (let event of events) {
-            const buttons = []
-            if (event.author.id == ctx.user.id) {
-                buttons.push(
+            const participants = []
+            for (const x of await event.getParticipants()) {
+                participants.push(`@${x.name}`)
+            }
+            const buttons = [
                     [Markup.button.callback('Редактировать', 'edit')],
                     [Markup.button.callback('Удалить', `delete-${event.id}`)],
                     [Markup.button.callback('Опубликовать', 'publish')],
-                )
-            }
-            else {
-                buttons.push(
-                    Markup.button.callback('Отказаться', `unjoin-${event.id}`),
-                )
-            }
-            const keyboard = Markup.inlineKeyboard(
-                buttons
-            )
+            ]
+            const keyboard = Markup.inlineKeyboard(buttons).oneTime().resize() 
             const message = mustache.render(config.messages.event_info, {
                 title: formatDate(event.date),
                 event: event,
-                user: ctx.user
+                user: ctx.user,
+                participants: participants
             })
             ctx.replyWithHTML(message, keyboard)
         }
@@ -164,27 +152,21 @@ bot.action('imparticipant', async (ctx) => {
         ctx.reply(config.messages.no_events)
     }
     else {
-        for (let event of events) {
-            const buttons = []
-            if (event.author.id == ctx.user.id) {
-                buttons.push(
-                    [Markup.button.callback('Редактировать', 'edit')],
-                    [Markup.button.callback('Удалить', `delete-${event.id}`)],
-                    [Markup.button.callback('Опубликовать', 'publish')],
-                )
+        for (const e of events) {
+            const event = await Event.findByPk(e.id, {
+                include: { model: User, as: 'author' }
+            })
+            const participants = []
+            for (const x of await event.getParticipants()) {
+                participants.push(`@${x.name}`)
             }
-            else {
-                buttons.push(
-                    Markup.button.callback('Отказаться', `unjoin-${event.id}`),
-                )
-            }
-            const keyboard = Markup.inlineKeyboard(
-                buttons
-            )
+            const buttons = [Markup.button.callback('Отказаться', `unjoin-${event.id}`)]
+            const keyboard = Markup.inlineKeyboard(buttons)
             const message = mustache.render(config.messages.event_info, {
                 title: formatDate(event.date),
                 event: event,
-                user: ctx.user
+                user: ctx.user,
+                participants: participants
             })
 
             ctx.replyWithHTML(message, keyboard)
@@ -224,7 +206,7 @@ bot.on('callback_query', async (ctx) => {
         await event.addParticipant(ctx.user)
         ctx.reply(config.messages.event_joined)
     }
-    else if (callbackData === 'unjoin') {
+    else if (callbackData.startsWith('unjoin')) {
         // Unjoin the event
         const event = await Event.findByPk(eventId)
         await event.removeParticipant(ctx.user)
