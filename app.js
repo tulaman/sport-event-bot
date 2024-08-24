@@ -85,16 +85,7 @@ bot.command('find', async (ctx) => {
     else {
         for (const event of events) {
             const keyboard = Markup.inlineKeyboard(Markup.button.callback('✅ Присоединиться', `join-${event.id}`))
-            const participants = []
-            for (const x of await event.getParticipants()) {
-                participants.push(`@${x.name}`)
-            }
-            const message = mustache.render(config.messages.event_info, {
-                title: formatDate(event.date),
-                event: event,
-                participants: participants.join(', '),
-                user: ctx.user
-            })
+            const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
         }
     }
@@ -121,22 +112,13 @@ bot.action('imauthor', async (ctx) => {
     }
     else {
         for (let event of events) {
-            const participants = []
-            for (const x of await event.getParticipants()) {
-                participants.push(`@${x.name}`)
-            }
             const buttons = [
-                    [Markup.button.callback('Редактировать', 'edit')],
-                    [Markup.button.callback('Удалить', `delete-${event.id}`)],
-                    [Markup.button.callback('Опубликовать', 'publish')],
+                [Markup.button.callback('Редактировать', 'edit')],
+                [Markup.button.callback('Удалить', `delete-${event.id}`)],
+                [Markup.button.callback('Опубликовать', `publish-${event.id}`)],
             ]
             const keyboard = Markup.inlineKeyboard(buttons).oneTime().resize() 
-            const message = mustache.render(config.messages.event_info, {
-                title: formatDate(event.date),
-                event: event,
-                user: ctx.user,
-                participants: participants
-            })
+            const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
         }
     }
@@ -164,19 +146,9 @@ bot.action('imparticipant', async (ctx) => {
             const event = await Event.findByPk(e.id, {
                 include: { model: User, as: 'author' }
             })
-            const participants = []
-            for (const x of await event.getParticipants()) {
-                participants.push(`@${x.name}`)
-            }
             const buttons = [Markup.button.callback('Отказаться', `unjoin-${event.id}`)]
             const keyboard = Markup.inlineKeyboard(buttons)
-            const message = mustache.render(config.messages.event_info, {
-                title: formatDate(event.date),
-                event: event,
-                user: ctx.user,
-                participants: participants
-            })
-
+            const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
         }
     }
@@ -194,7 +166,6 @@ for (const et of config.event_types) {
 // Catch all callback handler
 // TODO: 
 // - edit
-// - publish
 bot.on('callback_query', async (ctx) => {
     const callbackData = ctx.callbackQuery.data
     const eventId = callbackData.split('-')[1]
@@ -203,8 +174,12 @@ bot.on('callback_query', async (ctx) => {
         await ctx.deleteMessage()
         await ctx.answerCbQuery(config.messages.event_deleted)
     }
-    else if (callbackData === 'publish') {
+    else if (callbackData.startsWith('publish')) {
         // Publish the event
+        const messenger_id = config.public_channel_id
+        const event = await Event.findByPk(eventId)
+        const message = await eventInfo(event)
+        await bot.telegram.sendMessage(messenger_id, message, { parse_mode: 'HTML' })
         ctx.reply(config.messages.event_published)
     }
     else if (callbackData.startsWith('join')) {
@@ -346,3 +321,18 @@ process.once('SIGTERM', () => bot.stop('SIGTERM'))
 // TODO:
 // - edit event + notifications to participants
 // - notifications about event (1 hour before)
+
+
+
+const eventInfo = async (event) => {
+    const participants = []
+    for (const x of await event.getParticipants()) {
+        participants.push(`@${x.name}`)
+    }
+    const message = mustache.render(config.messages.event_info, {
+        title: formatDate(event.date),
+        event: event,
+        participants: participants.join(', ')
+    })
+    return message
+}
