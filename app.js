@@ -7,8 +7,14 @@ const { formatDate } = require('./utils')
 const mustache = require('mustache')
 const sequelize = require('sequelize')
 const Op = sequelize.Op
+const Calendar = require('telegram-inline-calendar')
 
 const bot = new Telegraf(process.env.TG_TOKEN)
+const calendar = new Calendar(bot, {
+    date_format: 'YYYY-MM-DD',
+    language: 'ru',
+    bot_api: 'telegraf'
+})
 
 // Middleware to catch errors
 bot.catch((err, ctx) => {
@@ -51,10 +57,11 @@ bot.command('help', (ctx) => {
 
 // Commands to interact with the bot
 // - Create a new run
-bot.command('create', (ctx) => {
+bot.command('create', async (ctx) => {
     ctx.session.state = 'choose_date'
     ctx.session.new_event = { author_id: ctx.user.id }
-    ctx.reply(config.messages.choose_date)
+    //ctx.reply(config.messages.choose_date)
+    calendar.startNavCalendar(ctx.message)
 })
 
 // - Find runs for today, this week, this month
@@ -216,7 +223,19 @@ bot.on('callback_query', async (ctx) => {
         ctx.reply(config.messages.event_edited)
     }
     else {
-        ctx.reply(config.messages.unknown_command)
+        // The date of the upcoming event is selected
+        if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
+            res = calendar.clickButtonCalendar(ctx.callbackQuery)
+            if (res !== -1) {
+                //bot.telegram.sendMessage(ctx.callbackQuery.message.chat.id, "You selected: " + res)
+                ctx.session.new_event['date'] = res
+                ctx.session.state = 'choose_time'
+                await ctx.replyWithHTML(config.messages.choose_time)
+            }
+        }
+        else {
+            ctx.reply(config.messages.unknown_command)
+        }
     }
 })
 
@@ -318,7 +337,6 @@ process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
 
 // TODO:
-// - create event: convenient date typing
 // - edit event + notifications to participants
 // - notifications about event (1 hour before)
 // - different fields for different events (mostly skipping distance and pace for board games)
