@@ -55,11 +55,11 @@ const Event = sequelize.define(
         },
         distance: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: true
         },
         pace: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: true
         },
         additional_info: {
             type: DataTypes.TEXT,
@@ -103,7 +103,7 @@ const connect = async () => {
         await sequelize.authenticate()
         console.log('Connection has been established successfully.')
 
-        //await sequelize.sync({ force: process.env.NODE_ENV === 'development' })
+        // await sequelize.sync({ force: process.env.NODE_ENV === 'development' })
         console.log('All models were synchronized successfully.')
     } catch (error) {
         console.error('Unable to connect to the database:', error)

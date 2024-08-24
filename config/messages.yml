@@ -59,10 +59,16 @@ event_info: |
     🏃 Тип: {{event.type}}
     🕒 Время: {{event.time}}
     📍 Место: {{event.location}}
+    {{#event.distance}}
     📏 Расстояние: {{event.distance}}
-    🏃‍♂️ Темп: {{event.pace}}
+    {{/event.distance}}
+    {{#event.pace}}
+    🏃‍♂️ Темп/Скорость: {{event.pace}}
+    {{/event.pace}}
     👤 Автор: @{{event.author.name}}
+    {{#event.additional_info}}
     📝 Описание: {{event.additional_info}}
+    {{/event.additional_info}}
     {{#participants}}
     👥 Участники: {{participants}}
     {{/participants}}

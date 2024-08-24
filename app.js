@@ -228,7 +228,6 @@ bot.on('callback_query', async (ctx) => {
         if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
             res = calendar.clickButtonCalendar(ctx.callbackQuery)
             if (res !== -1) {
-                //bot.telegram.sendMessage(ctx.callbackQuery.message.chat.id, "You selected: " + res)
                 ctx.session.new_event['date'] = res
                 ctx.session.state = 'choose_time'
                 await ctx.replyWithHTML(config.messages.choose_time)
@@ -308,6 +307,7 @@ bot.on(message('text'), async (ctx) => {
     }
 
     const state = ctx.session.state
+
     if (state in dispatch) {
         const mode = dispatch[state]
         if (mode.validation &&
@@ -322,8 +322,14 @@ bot.on(message('text'), async (ctx) => {
 
         ctx.session.new_event[mode.attr] = ctx.message.text
         ctx.session.state = mode.next
+        let message = mode.message
+        if (state === 'choose_location' &&
+            config.static_events.includes(ctx.session.new_event['type'])) {
+            ctx.session.state = 'enter_additional_info'
+            message = config.messages.enter_additional_info
+        }
 
-        await ctx.replyWithHTML(mode.message, mode.keyboard)
+        await ctx.replyWithHTML(message, mode.keyboard)
     }
     else {
         ctx.reply(config.messages.unknown_command)
@@ -340,5 +346,3 @@ process.once('SIGTERM', () => bot.stop('SIGTERM'))
 // TODO:
 // - edit event + notifications to participants
 // - notifications about event (1 hour before)
-// - different fields for different events (mostly skipping distance and pace for board games)
-// - enter date routine (using russian shortcuts like today, tomorrow, the next day after tomorrow, day of weeks etc)
