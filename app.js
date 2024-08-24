@@ -13,7 +13,8 @@ const bot = new Telegraf(process.env.TG_TOKEN)
 const calendar = new Calendar(bot, {
     date_format: 'YYYY-MM-DD',
     language: 'ru',
-    bot_api: 'telegraf'
+    bot_api: 'telegraf',
+    start_week_day: 1
 })
 
 // Middleware to catch errors
