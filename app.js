@@ -73,10 +73,13 @@ bot.command('find', async (ctx) => {
             author_id: { [Op.ne]: ctx.user.id }
         }
     })
-    const events = []
+    const events = events_full
     for (let event of events_full) {
         if (event.hasParticipant(ctx.user.id)) {
             continue
+        }
+        else {
+            events.push(event)
         }
     }
     if (events.length === 0) {
@@ -84,7 +87,9 @@ bot.command('find', async (ctx) => {
     }
     else {
         for (const event of events) {
-            const keyboard = Markup.inlineKeyboard(Markup.button.callback('✅ Присоединиться', `join-${event.id}`))
+            const keyboard = Markup.inlineKeyboard(
+                [Markup.button.callback('✅ Присоединиться', `join-${event.id}`)]
+            )
             const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
         }
