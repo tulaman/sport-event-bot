@@ -345,9 +345,8 @@ const eventInfo = async (event) => {
 
 if (process.env.NODE_ENV === "production") {
     // Creating the web server with webhooks
-    const port = config.PORT || 3000
+    const PORT = config.PORT || 3000
     const app = express()
-    console.log(`* Listening on ${config.WEBHOOK_DOMAIN}:${config.PORT}`)
 
     async function setupWebhook() {
         // Set the bot API endpoint
@@ -357,6 +356,10 @@ if (process.env.NODE_ENV === "production") {
         app.use(webhook)
     }
     setupWebhook().catch(console.error)
+
+    app.listen(PORT, () => {
+        console.log(`* Listening on ${config.WEBHOOK_DOMAIN}:${config.PORT}`)
+    })
 }
 else {
     bot.launch()
