@@ -343,7 +343,7 @@ const eventInfo = async (event) => {
 }
 
 
-if (NODE_ENV === "production") {
+if (process.env.NODE_ENV === "production") {
     // Creating the web server with webhooks
     const port = config.PORT || 3000
     const app = express()
