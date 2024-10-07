@@ -1,6 +1,7 @@
-require('dotenv').config()
+require('@dotenvx/dotenvx').config()
 const config = require('./config')
 const { Telegraf, Markup } = require('telegraf')
+const express = require('express')
 const { message } = require('telegraf/filters')
 const { db, loadSessionFromDatabase, saveSessionToDatabase, Event, User } = require('./db')
 const { formatDate } = require('./utils')
@@ -341,3 +342,16 @@ const eventInfo = async (event) => {
     })
     return message
 }
+
+// Creating the web server with webhooks
+const port = config.PORT || 3000
+const app = express()
+
+async function setupWebhook() {
+    // Set the bot API endpoint
+    const webhook = await bot.createWebhook({
+        domain: config.WEBHOOK_DOMAIN,
+    })
+    app.use(webhook)
+}
+setupWebhook().catch(console.error)

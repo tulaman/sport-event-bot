@@ -4,9 +4,11 @@ const yaml = require('js-yaml')
 
 // Determine the environment, default to 'default' if NODE_ENV is not set
 const environment = process.env.NODE_ENV || 'default'
+console.log(`* Current environment: ${environment}`)
 
 // Load the default configuration
 const defaultConfig = require('./default.json')
+const { log } = require('console')
 
 // Try to load the environment-specific configuration
 let envConfig = {};

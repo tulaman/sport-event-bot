@@ -1,12 +1,21 @@
 const { Sequelize, DataTypes } = require('sequelize')
+const config = require('./config')
 
 const STORAGE = process.env.STORAGE || ':memory:'
 
-
-const sequelize = new Sequelize({
-    dialect: 'sqlite',
-    storage: STORAGE
-})
+const sequelize = process.env.NODE_ENV === "production" ?
+    new Sequelize({
+        dialect: 'mysql',
+        database: config.DB_NAME,
+        username: config.DB_USER,
+        password: process.env.DB_PASSWORD,
+        host: config.DB_HOST,
+        port: config.DB_PORT
+    }) :
+    new Sequelize({
+        dialect: 'sqlite',
+        storage: STORAGE
+    })
 
 
 // define the database

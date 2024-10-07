@@ -133,7 +133,7 @@ dist
 devcontainer.json
 dependabot.yml
 
-.env*
+.env.keys
 .flaskenv*
 !.env.project
 !.env.vault
