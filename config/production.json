@@ -1,3 +1,7 @@
 {
-    "BOT_NAME": "Run Orel Bot"
+    "BOT_NAME": "Run Orel Bot",
+    "DB_USER": "runorel",
+    "DB_HOST": "run-orel-mysql-do-user-17978996-0.l.db.ondigitalocean.com",
+    "DB_PORT": "25060",
+    "DB_NAME": "runorel"
 }
