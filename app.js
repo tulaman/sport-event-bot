@@ -357,6 +357,13 @@ if (process.env.NODE_ENV === "production") {
     }
     setupWebhook().catch(console.error)
 
+    // The signature
+    app.get('/about', (req, res) => {
+        res.send(`
+        <h1>Sport Event Bot</h1>
+        <b>© Ilya Lityuga, 2024</b>`)
+    })
+
     app.listen(PORT, () => {
         console.log(`* Listening on ${config.WEBHOOK_DOMAIN}:${config.PORT}`)
     })
