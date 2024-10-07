@@ -347,6 +347,7 @@ if (process.env.NODE_ENV === "production") {
     // Creating the web server with webhooks
     const port = config.PORT || 3000
     const app = express()
+    console.log(`* Listening on ${config.WEBHOOK_DOMAIN}:${config.PORT}`)
 
     async function setupWebhook() {
         // Set the bot API endpoint
