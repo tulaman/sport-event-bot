@@ -1,16 +1,22 @@
 const { Sequelize, DataTypes } = require('sequelize')
 const config = require('./config')
+const fs = require('fs')
+
+// Путь к файлу CA сертификата
+const caCertificate = fs.readFileSync('./config/ca-certificate.crt');
 
 const STORAGE = process.env.STORAGE || ':memory:'
 
 const sequelize = process.env.NODE_ENV === "production" ?
-    new Sequelize({
+    new Sequelize(config.DB_NAME, config.DB_USER, process.env.DB_PASSWORD, {
         dialect: 'mysql',
-        database: config.DB_NAME,
-        username: config.DB_USER,
-        password: process.env.DB_PASSWORD,
         host: config.DB_HOST,
-        port: config.DB_PORT
+        port: config.DB_PORT,
+        dialectOptions: {
+            ssl: {
+                ca: caCertificate
+            }
+        }
     }) :
     new Sequelize({
         dialect: 'sqlite',
