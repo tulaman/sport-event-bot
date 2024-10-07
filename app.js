@@ -317,7 +317,6 @@ bot.on(message('text'), async (ctx) => {
     }
 })
 
-bot.launch()
 
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'))
@@ -343,15 +342,21 @@ const eventInfo = async (event) => {
     return message
 }
 
-// Creating the web server with webhooks
-const port = config.PORT || 3000
-const app = express()
 
-async function setupWebhook() {
-    // Set the bot API endpoint
-    const webhook = await bot.createWebhook({
-        domain: config.WEBHOOK_DOMAIN,
-    })
-    app.use(webhook)
+if (NODE_ENV === "production") {
+    // Creating the web server with webhooks
+    const port = config.PORT || 3000
+    const app = express()
+
+    async function setupWebhook() {
+        // Set the bot API endpoint
+        const webhook = await bot.createWebhook({
+            domain: config.WEBHOOK_DOMAIN,
+        })
+        app.use(webhook)
+    }
+    setupWebhook().catch(console.error)
 }
-setupWebhook().catch(console.error)
+else {
+    bot.launch()
+}
