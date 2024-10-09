@@ -110,7 +110,8 @@ bot.command('my_events', async (ctx) => {
 bot.action('imauthor', async (ctx) => {
     const events = await Event.findAll({
         include: { model: User, as: 'author' },
-        where: { author_id: ctx.user.id }
+        where: { author_id: ctx.user.id, date: { [Op.gte]: new Date() } },
+        order: [['date', 'ASC']]
     })
     await ctx.deleteMessage()
     if (events.length === 0) {
@@ -119,7 +120,7 @@ bot.action('imauthor', async (ctx) => {
     else {
         for (let event of events) {
             const buttons = [
-                [Markup.button.callback('Редактировать', 'edit')],
+                [Markup.button.callback('Редактировать', `edit-${event.id}`)],
                 [Markup.button.callback('Удалить', `delete-${event.id}`)],
                 [Markup.button.callback('Опубликовать', `publish-${event.id}`)],
             ]
@@ -200,9 +201,35 @@ bot.on('callback_query', async (ctx) => {
         await event.removeParticipant(ctx.user)
         await ctx.answerCbQuery(config.messages.event_unjoined)
     }
-    else if (callbackData === 'edit') {
+    else if (callbackData.startsWith('edit_time')) {
+        const event = await Event.findByPk(eventId)
+        const message = mustache.render(config.messages.edit_time, { event: event })
+        ctx.session.edit_event_id = eventId
+        ctx.session.state = 'save_new_time'
+        await ctx.replyWithHTML(message)
+    }
+    else if (callbackData.startsWith('edit_place')) {
+        const event = await Event.findByPk(eventId)
+        const message = mustache.render(config.messages.edit_location, { event: event })
+        ctx.session.edit_event_id = eventId
+        ctx.session.state = 'save_new_location'
+        await ctx.replyWithHTML(message)
+    }
+    else if (callbackData.startsWith('edit_info')) {
+        const event = await Event.findByPk(eventId)
+        const message = mustache.render(config.messages.edit_info, { event: event })
+        ctx.session.edit_event_id = eventId
+        ctx.session.state = 'save_new_info'
+        await ctx.replyWithHTML(message)
+    }
+    else if (callbackData.startsWith('edit')) {
         // Edit the event
-        await ctx.answerCbQuery(config.messages.event_edited)
+        const buttons = [
+            [Markup.button.callback('Время старта 🕑', `edit_time-${eventId}`)],
+            [Markup.button.callback('Место проведения 📍', `edit_place-${eventId}`)],
+            [Markup.button.callback('Описание 📝', `edit_info-${eventId}`)]
+        ]
+        await ctx.reply(config.messages.edit_message, Markup.inlineKeyboard(buttons))
     }
     else {
         // The date of the upcoming event is selected
@@ -285,6 +312,37 @@ bot.on(message('text'), async (ctx) => {
             message: config.messages.event_created,
             action: save_event
         },
+        'save_new_time': {
+            next: '',
+            attr: '',
+            message: config.messages.time_saved,
+            validation: validate_time,
+            action: async (ctx) => {
+                const event = await Event.findByPk(ctx.session.edit_event_id)
+                event.time = ctx.message.text
+                await event.save()
+            }
+        },
+        'save_new_location': {
+            next: '',
+            attr: '',
+            message: config.messages.location_saved,
+            action: async (ctx) => {
+                const event = await Event.findByPk(ctx.session.edit_event_id)
+                event.location = ctx.message.text
+                await event.save()
+            }
+        },
+        'save_new_info': {
+            next: '',
+            attr: '',
+            message: config.messages.info_saved,
+            action: async (ctx) => {
+                const event = await Event.findByPk(ctx.session.edit_event_id)
+                event.additional_info = ctx.message.text
+                await event.save()
+            }
+        }
     }
 
     const state = ctx.session.state
