@@ -230,7 +230,7 @@ bot.on(message('text'), async (ctx) => {
     }
 
     const validate_time = (time) => {
-        const time_regex = /^\d{2}:\d{2}$/
+        const time_regex = /^\d{2}:\d{2}(\s?-\s?\d{2}:\d{2})?$/
         return time_regex.test(time)
     }
 
@@ -297,10 +297,6 @@ bot.on(message('text'), async (ctx) => {
             return
         }
 
-        if (mode.action) {
-            await mode.action(ctx)
-        }
-
         ctx.session.new_event[mode.attr] = ctx.message.text
         ctx.session.state = mode.next
         let message = mode.message
@@ -308,6 +304,10 @@ bot.on(message('text'), async (ctx) => {
             config.static_events.includes(ctx.session.new_event['type'])) {
             ctx.session.state = 'enter_additional_info'
             message = config.messages.enter_additional_info
+        }
+
+        if (mode.action) {
+            await mode.action(ctx)
         }
 
         await ctx.replyWithHTML(message, mode.keyboard)
