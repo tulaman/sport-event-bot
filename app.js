@@ -186,23 +186,23 @@ bot.on('callback_query', async (ctx) => {
         const event = await Event.findByPk(eventId)
         const message = await eventInfo(event)
         await bot.telegram.sendMessage(messenger_id, message, { parse_mode: 'HTML' })
-        ctx.reply(config.messages.event_published)
+        await ctx.answerCbQuery(config.messages.event_published)
     }
     else if (callbackData.startsWith('join')) {
         // Join the event
         const event = await Event.findByPk(eventId)
         await event.addParticipant(ctx.user)
-        ctx.reply(config.messages.event_joined)
+        await ctx.answerCbQuery(config.messages.event_joined)
     }
     else if (callbackData.startsWith('unjoin')) {
         // Unjoin the event
         const event = await Event.findByPk(eventId)
         await event.removeParticipant(ctx.user)
-        ctx.reply(config.messages.event_unjoined)
+        await ctx.answerCbQuery(config.messages.event_unjoined)
     }
     else if (callbackData === 'edit') {
         // Edit the event
-        ctx.reply(config.messages.event_edited)
+        await ctx.answerCbQuery(config.messages.event_edited)
     }
     else {
         // The date of the upcoming event is selected
