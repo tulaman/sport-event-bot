@@ -71,7 +71,7 @@ event_info: |
     {{#event.pace}}
     🏃‍♂️ Темп/Скорость: {{event.pace}}
     {{/event.pace}}
-    👤 Автор: @{{event.author.name}}
+    👤 Автор: {{#event.author.nickname}}@{{event.author.nickname}}{{/event.author.nickname}}{{^event.author.nickname}}{{event.author.username}}{{/event.author.nickname}}
     {{#event.additional_info}}
     📝 Описание: {{event.additional_info}}
     {{/event.additional_info}}

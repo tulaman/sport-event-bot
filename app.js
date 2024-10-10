@@ -47,7 +47,7 @@ bot.start(async (ctx) => {
     const userId = `${ctx.from.id}`
     ctx.user = await User.findOrCreate({
         where: { telegram_id: userId },
-        defaults: { telegram_id: userId, name: ctx.from.username }
+        defaults: { telegram_id: userId, username: ctx.from.first_name, nickname: ctx.from.username }
     })
     ctx.reply(config.messages.start)
 })
@@ -79,7 +79,7 @@ bot.command('find', async (ctx) => {
     })
     const events = []
     for (let event of events_full) {
-        if (event.hasParticipant(ctx.user.id)) {
+        if (await event.hasParticipant(ctx.user.id)) {
             continue
         }
         else {
@@ -199,12 +199,14 @@ bot.on('callback_query', async (ctx) => {
         // Join the event
         const event = await Event.findByPk(eventId)
         await event.addParticipant(ctx.user)
+        await ctx.deleteMessage()
         await ctx.answerCbQuery(config.messages.event_joined)
     }
     else if (callbackData.startsWith('unjoin')) {
         // Unjoin the event
         const event = await Event.findByPk(eventId)
         await event.removeParticipant(ctx.user)
+        await ctx.deleteMessage()
         await ctx.answerCbQuery(config.messages.event_unjoined)
     }
     else if (callbackData.startsWith('edit_time')) {
@@ -400,7 +402,12 @@ process.once('SIGTERM', () => bot.stop('SIGTERM'))
 const eventInfo = async (event) => {
     const participants = []
     for (const x of await event.getParticipants()) {
-        participants.push(`@${x.name}`)
+        if (x.nickname) {
+            participants.push(`@${x.nickname}`)
+        }
+        else {
+            participants.push(x.username)
+        }
     }
     const message = mustache.render(config.messages.event_info, {
         title: formatDate(event.date),
