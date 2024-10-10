@@ -103,3 +103,22 @@ event_deleted_notification: |
   Мероприятие <b>{{event.type}}</b>,
   запланированное на {{event.date}} {{event.time}}
   было удалено организатором.
+
+time_changed_notification: |
+  ❗️❗️ Внимание ❗️❗️ 
+  Время мероприятия <b>{{event.type}}</b>,
+  запланированное на {{event.date}} {{event.time}}
+  было изменено на {{new_time}}.
+
+location_changed_notification: |
+  ❗️❗️ Внимание ❗️❗️ 
+  Место проведения мероприятия <b>{{event.type}}</b>,
+  запланированное на {{event.date}} {{event.time}}
+  было изменено на {{new_location}}.
+
+info_changed_notification: |
+  ❗️❗️ Внимание ❗️❗️ 
+  Описание мероприятия <b>{{event.type}}</b>,
+  запланированное на {{event.date}} {{event.time}}
+  было изменено на:
+  {{new_info}}

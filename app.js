@@ -179,8 +179,7 @@ bot.on('callback_query', async (ctx) => {
     if (callbackData.startsWith('delete')) {
         // Delete the event
         const event = await Event.findByPk(eventId)
-        const notification = mustache.render(config.messages.event_deleted_notification, { event: event })
-        notifyParticipants(eventId, notification)
+        notifyParticipants(event, config.messages.event_deleted_notification)
         await Event.destroy({ where: { id: eventId } })
         await ctx.deleteMessage()
         await ctx.answerCbQuery(config.messages.event_deleted)
@@ -207,6 +206,7 @@ bot.on('callback_query', async (ctx) => {
     }
     else if (callbackData.startsWith('edit_time')) {
         const event = await Event.findByPk(eventId)
+
         const message = mustache.render(config.messages.edit_time, { event: event })
         ctx.session.edit_event_id = eventId
         ctx.session.state = 'save_new_time'
@@ -323,6 +323,7 @@ bot.on(message('text'), async (ctx) => {
             validation: validate_time,
             action: async (ctx) => {
                 const event = await Event.findByPk(ctx.session.edit_event_id)
+                notifyParticipants(event, config.messages.time_changed_notification, { new_time: ctx.message.text })
                 event.time = ctx.message.text
                 await event.save()
             }
@@ -333,6 +334,7 @@ bot.on(message('text'), async (ctx) => {
             message: config.messages.location_saved,
             action: async (ctx) => {
                 const event = await Event.findByPk(ctx.session.edit_event_id)
+                notifyParticipants(event, config.messages.location_changed_notification, { new_location: ctx.message.text })
                 event.location = ctx.message.text
                 await event.save()
             }
@@ -343,6 +345,7 @@ bot.on(message('text'), async (ctx) => {
             message: config.messages.info_saved,
             action: async (ctx) => {
                 const event = await Event.findByPk(ctx.session.edit_event_id)
+                notifyParticipants(event, config.messages.info_changed_notification, { new_info: ctx.message.text })
                 event.additional_info = ctx.message.text
                 await event.save()
             }
@@ -404,10 +407,13 @@ const eventInfo = async (event) => {
     return message
 }
 
-const notifyParticipants = async (event, msg) => {
+const notifyParticipants = async (event, msg, params) => {
     const participants = await event.getParticipants()
+    const vars = params || {}
+    vars['event'] = event
+    const notification = mustache.render(msg, vars)
     for (const p of participants) {
-        await bot.telegram.sendMessage(p.telegram_id, msg, { parse_mode: 'HTML' })
+        await bot.telegram.sendMessage(p.telegram_id, notification, { parse_mode: 'HTML' })
     }
 }
 
