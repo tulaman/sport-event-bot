@@ -71,10 +71,13 @@ bot.command('find', async (ctx) => {
     const events_full = await Event.findAll({
         include: { model: User, as: 'author' },
         where: {
-            author_id: { [Op.ne]: ctx.user.id }
+            author_id: { [Op.ne]: ctx.user.id },
+            date: {
+                [Op.gte]: new Date
+            }
         }
     })
-    const events = events_full
+    const events = []
     for (let event of events_full) {
         if (event.hasParticipant(ctx.user.id)) {
             continue
