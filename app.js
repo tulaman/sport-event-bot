@@ -177,6 +177,10 @@ bot.on('callback_query', async (ctx) => {
     const callbackData = ctx.callbackQuery.data
     const eventId = callbackData.split('-')[1]
     if (callbackData.startsWith('delete')) {
+        // Delete the event
+        const event = await Event.findByPk(eventId)
+        const notification = mustache.render(config.messages.event_deleted_notification, { event: event })
+        notifyParticipants(eventId, notification)
         await Event.destroy({ where: { id: eventId } })
         await ctx.deleteMessage()
         await ctx.answerCbQuery(config.messages.event_deleted)
@@ -400,6 +404,12 @@ const eventInfo = async (event) => {
     return message
 }
 
+const notifyParticipants = async (event, msg) => {
+    const participants = await event.getParticipants()
+    for (const p of participants) {
+        await bot.telegram.sendMessage(p.telegram_id, msg, { parse_mode: 'HTML' })
+    }
+}
 
 if (process.env.NODE_ENV === "production") {
     // Creating the web server with webhooks

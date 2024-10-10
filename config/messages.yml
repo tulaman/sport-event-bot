@@ -97,3 +97,9 @@ time_saved: Время успешно сохранено!
 location_saved: Место успешно сохранено!
 
 info_saved: Описание успешно сохранено!
+
+event_deleted_notification: |
+  ❗️❗️ Внимание ❗️❗️ 
+  Мероприятие <b>{{event.type}}</b>,
+  запланированное на {{event.date}} {{event.time}}
+  было удалено организатором.
