@@ -194,7 +194,11 @@ bot.on('callback_query', async (ctx) => {
             include: { model: User, as: 'author' }
         })
         const message = await eventInfo(event)
-        await bot.telegram.sendMessage(messenger_id, message, { parse_mode: 'HTML' })
+        // Send the message to the public channel with the button "join"
+        const keyboard = Markup.inlineKeyboard(
+            [Markup.button.callback('✅ Присоединиться', `join-${event.id}`)]
+        )
+        await bot.telegram.sendMessage(messenger_id, message, { parse_mode: 'HTML', reply_markup: keyboard.reply_markup })
         await ctx.answerCbQuery(config.messages.event_published)
     }
     else if (callbackData.startsWith('join')) {
