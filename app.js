@@ -190,7 +190,9 @@ bot.on('callback_query', async (ctx) => {
     else if (callbackData.startsWith('publish')) {
         // Publish the event
         const messenger_id = config.public_channel_id
-        const event = await Event.findByPk(eventId)
+        const event = await Event.findByPk(eventId, {
+            include: { model: User, as: 'author' }
+        })
         const message = await eventInfo(event)
         await bot.telegram.sendMessage(messenger_id, message, { parse_mode: 'HTML' })
         await ctx.answerCbQuery(config.messages.event_published)
