@@ -15,7 +15,9 @@ const calendar = new Calendar(bot, {
     date_format: 'YYYY-MM-DD',
     language: 'ru',
     bot_api: 'telegraf',
-    start_week_day: 1
+    start_week_day: 1,
+    start_date: new Date(),
+    stop_date: new Date(new Date().setMonth(new Date().getMonth() + 3))
 })
 
 // Middleware to catch errors
@@ -239,7 +241,7 @@ bot.on('callback_query', async (ctx) => {
             await ctx.reply(config.messages.edit_message, Markup.inlineKeyboard(buttons))
         },
         async default() {
-            if (ctx.callbackQuery.message.message_id === calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
+            if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
                 const res = calendar.clickButtonCalendar(ctx.callbackQuery)
                 if (res !== -1) {
                     ctx.session.new_event['date'] = res
