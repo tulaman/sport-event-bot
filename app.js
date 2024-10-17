@@ -219,7 +219,9 @@ bot.on('callback_query', async (ctx) => {
     }
     else if (callbackData.startsWith('unjoin')) {
         // Unjoin the event
-        const event = await Event.findByPk(eventId)
+        const event = await Event.findByPk(eventId, {
+            include: { model: User, as: 'author' }
+        })
         await event.removeParticipant(ctx.user)
         if (ctx.chat.type === 'private') {
             await ctx.deleteMessage()
