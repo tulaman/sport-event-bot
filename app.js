@@ -105,7 +105,6 @@ bot.command('find', async (ctx) => {
     }
 })
 
-
 bot.command('my_events', async (ctx) => {
     ctx.replyWithHTML(config.messages.choose_category, Markup.inlineKeyboard(
         [
@@ -139,7 +138,6 @@ bot.action('imauthor', async (ctx) => {
     }
 })
 
-
 // - List all runs I have joined to
 bot.action('imparticipant', async (ctx) => {
     const userId = ctx.from.id
@@ -168,7 +166,6 @@ bot.action('imparticipant', async (ctx) => {
         }
     }
 })
-
 
 for (const et of config.event_types) {
     bot.action(et, (ctx) => {
@@ -247,6 +244,11 @@ bot.on('callback_query', async (ctx) => {
             ]
             await ctx.reply(config.messages.edit_message, Markup.inlineKeyboard(buttons))
         },
+        async info() {
+            const message = await eventInfo(event)
+            await ctx.answerCbQuery()
+            await ctx.replyWithHTML(message)
+        },
         async default() {
             if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
                 const res = calendar.clickButtonCalendar(ctx.callbackQuery)
@@ -268,7 +270,6 @@ bot.on('callback_query', async (ctx) => {
         (handlers[action] || handlers.default)()
     }
 })
-
 
 // Handler on any text from user
 bot.on(message('text'), async (ctx) => {
@@ -401,17 +402,13 @@ bot.on(message('text'), async (ctx) => {
     }
 })
 
-
 // Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
-
 // TODO:
 // - edit event + notifications to participants
 // - notifications about event (1 hour before)
-
-
 
 const eventInfo = async (event) => {
     const participants = []
@@ -441,8 +438,12 @@ const notifyParticipants = async (event, msg, params) => {
     event['formatted_date'] = `${day}.${month}.${year}`
     vars['event'] = event
     const notification = mustache.render(msg, vars)
+    const buttons = [Markup.button.callback(BUTTON_LABELS.info, `info-${event.id}`)]
     for (const p of participants) {
-        await bot.telegram.sendMessage(p.telegram_id, notification, { parse_mode: 'HTML' })
+        await bot.telegram.sendMessage(p.telegram_id, notification, {
+            parse_mode: 'HTML',
+            reply_markup: Markup.inlineKeyboard(buttons).reply_markup
+        })
     }
 }
 
