@@ -210,12 +210,16 @@ bot.on('callback_query', async (ctx) => {
             }
 
             if (ctx.chat.type === 'private') {
-                await ctx.deleteMessage()
                 const message = await eventInfo(event)
                 const keyboard = Markup.inlineKeyboard([
                     Markup.button.callback(action === 'join' ? BUTTON_LABELS.unjoin : BUTTON_LABELS.join, `${action === 'join' ? 'unjoin' : 'join'}-${event.id}`)
                 ])
-                await ctx.replyWithHTML(message, keyboard)
+                await ctx.editMessageText(message, {
+                    parse_mode: 'HTML',
+                    chat_id: ctx.callbackQuery.message.chat.id,
+                    message_id: ctx.callbackQuery.message.message_id,
+                    reply_markup: keyboard.reply_markup
+                })
             }
 
             await ctx.answerCbQuery(action === 'join' ? config.messages.event_joined : config.messages.event_unjoined)
