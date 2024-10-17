@@ -434,6 +434,11 @@ const eventInfo = async (event) => {
 const notifyParticipants = async (event, msg, params) => {
     const participants = await event.getParticipants()
     const vars = params || {}
+    const date = new Date(event.date)
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    event['formatted_date'] = `${day}.${month}.${year}`
     vars['event'] = event
     const notification = mustache.render(msg, vars)
     for (const p of participants) {

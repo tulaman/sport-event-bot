@@ -101,24 +101,26 @@ info_saved: Описание успешно сохранено!
 event_deleted_notification: |
   ❗️❗️ Внимание ❗️❗️ 
   Мероприятие <b>{{event.type}}</b>,
-  запланированное на {{event.date}} {{event.time}}
+  запланированное на {{event.formatted_date}} {{event.time}}
   было удалено организатором.
 
 time_changed_notification: |
   ❗️❗️ Внимание ❗️❗️ 
   Время мероприятия <b>{{event.type}}</b>,
-  запланированное на {{event.date}} {{event.time}}
-  было изменено на {{new_time}}.
+  запланированное на {{event.formatted_date}}
+  было изменено на:
+  <b>{{new_time}}</b>.
 
 location_changed_notification: |
   ❗️❗️ Внимание ❗️❗️ 
   Место проведения мероприятия <b>{{event.type}}</b>,
-  запланированное на {{event.date}} {{event.time}}
-  было изменено на {{new_location}}.
+  запланированное на {{event.formatted_date}} {{event.time}}
+  было изменено на:
+  <b>{{new_location}}</b>.
 
 info_changed_notification: |
   ❗️❗️ Внимание ❗️❗️ 
   Описание мероприятия <b>{{event.type}}</b>,
-  запланированное на {{event.date}} {{event.time}}
+  запланированное на {{event.formatted_date}} {{event.time}}
   было изменено на:
-  {{new_info}}
+  <b>{{new_info}}</b>
