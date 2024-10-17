@@ -20,11 +20,14 @@ const calendar = new Calendar(bot, {
     stop_date: new Date(new Date().setMonth(new Date().getMonth() + 3))
 })
 
+// Button labels
+const BUTTON_LABELS = config.button_labels
+
 // Middleware to catch errors
 bot.catch((err, ctx) => {
     console.error(`❌ Error occured for ${ctx.updateType}`, err)
     if (err.code === 403 && err.description === 'Forbidden: bot was blocked by the user') {
-        console.log(`🚫 bot was blocked by the user: ${ctx.chat.id}`)
+        console.log(`🛜 bot was blocked by the user: ${ctx.chat.id}`)
         removeUser(ctx.chat.id)
     }
 })
@@ -94,7 +97,7 @@ bot.command('find', async (ctx) => {
     else {
         for (const event of events) {
             const keyboard = Markup.inlineKeyboard(
-                [Markup.button.callback('✅ Присоединиться', `join-${event.id}`)]
+                [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)]
             )
             const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
@@ -125,11 +128,11 @@ bot.action('imauthor', async (ctx) => {
     else {
         for (let event of events) {
             const buttons = [
-                [Markup.button.callback('Редактировать', `edit-${event.id}`)],
-                [Markup.button.callback('Удалить', `delete-${event.id}`)],
-                [Markup.button.callback('Опубликовать', `publish-${event.id}`)],
+                [Markup.button.callback(BUTTON_LABELS.edit, `edit-${event.id}`)],
+                [Markup.button.callback(BUTTON_LABELS.delete, `delete-${event.id}`)],
+                [Markup.button.callback(BUTTON_LABELS.publish, `publish-${event.id}`)],
             ]
-            const keyboard = Markup.inlineKeyboard(buttons).oneTime().resize() 
+            const keyboard = Markup.inlineKeyboard(buttons).oneTime().resize()
             const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
         }
@@ -158,7 +161,7 @@ bot.action('imparticipant', async (ctx) => {
             const event = await Event.findByPk(e.id, {
                 include: { model: User, as: 'author' }
             })
-            const buttons = [Markup.button.callback('❌ Отказаться', `unjoin-${event.id}`)]
+            const buttons = [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
             const keyboard = Markup.inlineKeyboard(buttons)
             const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
@@ -194,7 +197,7 @@ bot.on('callback_query', async (ctx) => {
             const messengerId = config.public_channel_id
             const message = await eventInfo(event)
             const keyboard = Markup.inlineKeyboard([
-                Markup.button.callback('✅ Присоединиться', `join-${event.id}`)
+                Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)
             ])
             await bot.telegram.sendMessage(messengerId, message, { parse_mode: 'HTML', reply_markup: keyboard.reply_markup })
             await ctx.answerCbQuery(config.messages.event_published)
@@ -210,7 +213,7 @@ bot.on('callback_query', async (ctx) => {
                 await ctx.deleteMessage()
                 const message = await eventInfo(event)
                 const keyboard = Markup.inlineKeyboard([
-                    Markup.button.callback(action === 'join' ? '❌ Отказаться' : '✅ Присоединиться', `${action === 'join' ? 'unjoin' : 'join'}-${event.id}`)
+                    Markup.button.callback(action === 'join' ? BUTTON_LABELS.unjoin : BUTTON_LABELS.join, `${action === 'join' ? 'unjoin' : 'join'}-${event.id}`)
                 ])
                 await ctx.replyWithHTML(message, keyboard)
             }
@@ -234,9 +237,9 @@ bot.on('callback_query', async (ctx) => {
         },
         async edit() {
             const buttons = [
-                [Markup.button.callback('Время старта 🕑', `edit_time-${eventId}`)],
-                [Markup.button.callback('Место проведения 📍', `edit_place-${eventId}`)],
-                [Markup.button.callback('Описание 📝', `edit_info-${eventId}`)]
+                [Markup.button.callback(BUTTON_LABELS.edit_time, `edit_time-${eventId}`)],
+                [Markup.button.callback(BUTTON_LABELS.edit_place, `edit_place-${eventId}`)],
+                [Markup.button.callback(BUTTON_LABELS.edit_info, `edit_info-${eventId}`)]
             ]
             await ctx.reply(config.messages.edit_message, Markup.inlineKeyboard(buttons))
         },
