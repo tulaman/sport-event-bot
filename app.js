@@ -156,7 +156,7 @@ bot.action('imparticipant', async (ctx) => {
             const event = await Event.findByPk(e.id, {
                 include: { model: User, as: 'author' }
             })
-            const buttons = [Markup.button.callback('Отказаться', `unjoin-${event.id}`)]
+            const buttons = [Markup.button.callback('❌ Отказаться', `unjoin-${event.id}`)]
             const keyboard = Markup.inlineKeyboard(buttons)
             const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
@@ -203,16 +203,32 @@ bot.on('callback_query', async (ctx) => {
     }
     else if (callbackData.startsWith('join')) {
         // Join the event
-        const event = await Event.findByPk(eventId)
+        const event = await Event.findByPk(eventId, {
+            include: { model: User, as: 'author' }
+        })
         await event.addParticipant(ctx.user)
-        await ctx.deleteMessage()
+        if (ctx.chat.type === 'private') {
+            await ctx.deleteMessage()
+            const message = await eventInfo(event)
+            const keyboard = Markup.inlineKeyboard(
+                [Markup.button.callback('❌ Отказаться', `unjoin-${event.id}`)]
+            )
+            await ctx.replyWithHTML(message, keyboard)
+        }
         await ctx.answerCbQuery(config.messages.event_joined)
     }
     else if (callbackData.startsWith('unjoin')) {
         // Unjoin the event
         const event = await Event.findByPk(eventId)
         await event.removeParticipant(ctx.user)
-        await ctx.deleteMessage()
+        if (ctx.chat.type === 'private') {
+            await ctx.deleteMessage()
+            const message = await eventInfo(event)
+            const keyboard = Markup.inlineKeyboard(
+                [Markup.button.callback('✅ Присоединиться', `join-${event.id}`)]
+            )
+            await ctx.replyWithHTML(message, keyboard)
+        }
         await ctx.answerCbQuery(config.messages.event_unjoined)
     }
     else if (callbackData.startsWith('edit_time')) {
