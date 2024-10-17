@@ -174,111 +174,92 @@ for (const et of config.event_types) {
 }
 
 // Catch all callback handler
-// TODO: 
-// - edit
 bot.on('callback_query', async (ctx) => {
     const callbackData = ctx.callbackQuery.data
     const eventId = callbackData.split('-')[1]
-    if (callbackData.startsWith('delete')) {
-        // Delete the event
-        const event = await Event.findByPk(eventId)
-        notifyParticipants(event, config.messages.event_deleted_notification)
-        await Event.destroy({ where: { id: eventId } })
-        await ctx.deleteMessage()
-        await ctx.answerCbQuery(config.messages.event_deleted)
-    }
-    else if (callbackData.startsWith('publish')) {
-        // Publish the event
-        const messenger_id = config.public_channel_id
-        const event = await Event.findByPk(eventId, {
-            include: { model: User, as: 'author' }
-        })
-        const message = await eventInfo(event)
-        // Send the message to the public channel with the button "join"
-        const keyboard = Markup.inlineKeyboard(
-            [Markup.button.callback('✅ Присоединиться', `join-${event.id}`)]
-        )
-        await bot.telegram.sendMessage(messenger_id, message, { parse_mode: 'HTML', reply_markup: keyboard.reply_markup })
-        await ctx.answerCbQuery(config.messages.event_published)
-    }
-    else if (callbackData.startsWith('join')) {
-        // Join the event
-        const event = await Event.findByPk(eventId, {
-            include: { model: User, as: 'author' }
-        })
-        await event.addParticipant(ctx.user)
-        if (ctx.chat.type === 'private') {
-            await ctx.deleteMessage()
-            const message = await eventInfo(event)
-            const keyboard = Markup.inlineKeyboard(
-                [Markup.button.callback('❌ Отказаться', `unjoin-${event.id}`)]
-            )
-            await ctx.replyWithHTML(message, keyboard)
-        }
-        await ctx.answerCbQuery(config.messages.event_joined)
-    }
-    else if (callbackData.startsWith('unjoin')) {
-        // Unjoin the event
-        const event = await Event.findByPk(eventId, {
-            include: { model: User, as: 'author' }
-        })
-        await event.removeParticipant(ctx.user)
-        if (ctx.chat.type === 'private') {
-            await ctx.deleteMessage()
-            const message = await eventInfo(event)
-            const keyboard = Markup.inlineKeyboard(
-                [Markup.button.callback('✅ Присоединиться', `join-${event.id}`)]
-            )
-            await ctx.replyWithHTML(message, keyboard)
-        }
-        await ctx.answerCbQuery(config.messages.event_unjoined)
-    }
-    else if (callbackData.startsWith('edit_time')) {
-        const event = await Event.findByPk(eventId)
+    const event = await Event.findByPk(eventId, {
+        include: { model: User, as: 'author' }
+    })
 
-        const message = mustache.render(config.messages.edit_time, { event: event })
-        ctx.session.edit_event_id = eventId
-        ctx.session.state = 'save_new_time'
-        await ctx.replyWithHTML(message)
-    }
-    else if (callbackData.startsWith('edit_place')) {
-        const event = await Event.findByPk(eventId)
-        const message = mustache.render(config.messages.edit_location, { event: event })
-        ctx.session.edit_event_id = eventId
-        ctx.session.state = 'save_new_location'
-        await ctx.replyWithHTML(message)
-    }
-    else if (callbackData.startsWith('edit_info')) {
-        const event = await Event.findByPk(eventId)
-        const message = mustache.render(config.messages.edit_info, { event: event })
-        ctx.session.edit_event_id = eventId
-        ctx.session.state = 'save_new_info'
-        await ctx.replyWithHTML(message)
-    }
-    else if (callbackData.startsWith('edit')) {
-        // Edit the event
-        const buttons = [
-            [Markup.button.callback('Время старта 🕑', `edit_time-${eventId}`)],
-            [Markup.button.callback('Место проведения 📍', `edit_place-${eventId}`)],
-            [Markup.button.callback('Описание 📝', `edit_info-${eventId}`)]
-        ]
-        await ctx.reply(config.messages.edit_message, Markup.inlineKeyboard(buttons))
-    }
-    else {
-        // The date of the upcoming event is selected
-        if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
-            res = calendar.clickButtonCalendar(ctx.callbackQuery)
-            if (res !== -1) {
-                ctx.session.new_event['date'] = res
-                ctx.session.state = 'choose_time'
-                await ctx.replyWithHTML(config.messages.choose_time)
+    const handlers = {
+        async delete() {
+            notifyParticipants(event, config.messages.event_deleted_notification)
+            await Event.destroy({ where: { id: eventId } })
+            await ctx.deleteMessage()
+            await ctx.answerCbQuery(config.messages.event_deleted)
+        },
+        async publish() {
+            const messengerId = config.public_channel_id
+            const message = await eventInfo(event)
+            const keyboard = Markup.inlineKeyboard([
+                Markup.button.callback('✅ Присоединиться', `join-${event.id}`)
+            ])
+            await bot.telegram.sendMessage(messengerId, message, { parse_mode: 'HTML', reply_markup: keyboard.reply_markup })
+            await ctx.answerCbQuery(config.messages.event_published)
+        },
+        async toggleJoin(action) {
+            if (action === 'join') {
+                await event.addParticipant(ctx.user)
+            } else {
+                await event.removeParticipant(ctx.user)
+            }
+
+            if (ctx.chat.type === 'private') {
+                await ctx.deleteMessage()
+                const message = await eventInfo(event)
+                const keyboard = Markup.inlineKeyboard([
+                    Markup.button.callback(action === 'join' ? '❌ Отказаться' : '✅ Присоединиться', `${action === 'join' ? 'unjoin' : 'join'}-${event.id}`)
+                ])
+                await ctx.replyWithHTML(message, keyboard)
+            }
+
+            await ctx.answerCbQuery(action === 'join' ? config.messages.event_joined : config.messages.event_unjoined)
+        },
+        async editField(field, state) {
+            const message = mustache.render(config.messages[field], { event })
+            ctx.session.edit_event_id = eventId
+            ctx.session.state = state
+            await ctx.replyWithHTML(message)
+        },
+        async edit_time() {
+            await handlers.editField('edit_time', 'save_new_time')
+        },
+        async edit_place() {
+            await handlers.editField('edit_location', 'save_new_location')
+        },
+        async edit_info() {
+            await handlers.editField('edit_info', 'save_new_info')
+        },
+        async edit() {
+            const buttons = [
+                [Markup.button.callback('Время старта 🕑', `edit_time-${eventId}`)],
+                [Markup.button.callback('Место проведения 📍', `edit_place-${eventId}`)],
+                [Markup.button.callback('Описание 📝', `edit_info-${eventId}`)]
+            ]
+            await ctx.reply(config.messages.edit_message, Markup.inlineKeyboard(buttons))
+        },
+        async default() {
+            if (ctx.callbackQuery.message.message_id === calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
+                const res = calendar.clickButtonCalendar(ctx.callbackQuery)
+                if (res !== -1) {
+                    ctx.session.new_event['date'] = res
+                    ctx.session.state = 'choose_time'
+                    await ctx.replyWithHTML(config.messages.choose_time)
+                }
+            } else {
+                await ctx.reply(config.messages.unknown_command)
             }
         }
-        else {
-            ctx.reply(config.messages.unknown_command)
-        }
+    }
+
+    const action = callbackData.split('-')[0]
+    if (action === 'join' || action === 'unjoin') {
+        await handlers.toggleJoin(action)
+    } else {
+        (handlers[action] || handlers.default)()
     }
 })
+
 
 // Handler on any text from user
 bot.on(message('text'), async (ctx) => {
