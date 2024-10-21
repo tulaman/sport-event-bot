@@ -12,5 +12,10 @@ function formatDate(date) {
     return `${capitalizedWeekday} (${dayMonth})`;
 }
 
+function formatTime(time) {
+    // Время в формате "HH:mm:ss" или "HH:mm" должно быть преобразовано в "HH:mm"
+    // Так как это всего лишь строка, достаточно взять только первые 5 символов
+    return time.slice(0, 5)
+}
 
-module.exports = { formatDate }
+module.exports = { formatDate, formatTime }

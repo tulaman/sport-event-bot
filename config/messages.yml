@@ -63,7 +63,7 @@ event_info: |
     <b>{{title}}</b>
 
     🏃 Тип: {{event.type}}
-    🕒 Время: {{event.time}}
+    🕒 Время: {{event.formatted_time}}
     📍 Место: {{event.location}}
     {{#event.distance}}
     📏 Расстояние: {{event.distance}}
