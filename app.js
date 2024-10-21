@@ -81,7 +81,8 @@ bot.command('find', async (ctx) => {
             date: {
                 [Op.gte]: today
             }
-        }
+        },
+        order: [['date', 'ASC']]
     })
     const events = []
     for (let event of events_full) {
@@ -151,7 +152,8 @@ bot.action('imparticipant', async (ctx) => {
             model: Event,
             as: 'events_as_participant',
             required: false,
-            where: { date: { [Op.gte]: today } }
+            where: { date: { [Op.gte]: today } },
+            order: [['date', 'ASC']]
         }],
         where: { telegram_id: userId }
     })
