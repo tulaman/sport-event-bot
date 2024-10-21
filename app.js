@@ -210,6 +210,8 @@ bot.on('callback_query', async (ctx) => {
         async toggleJoin(action) {
             if (action === 'join') {
                 await event.addParticipant(ctx.user)
+                // Notify the author
+                notifyTheAuthor(event, ctx.user, config.messages.joined_notification)
             } else {
                 await event.removeParticipant(ctx.user)
             }
@@ -454,6 +456,14 @@ const notifyParticipants = async (event, msg, params) => {
         })
     }
 }
+
+
+const notifyTheAuthor = async (event, user, msg) => {
+    const author = await User.findByPk(event.author_id)
+    const notification = mustache.render(msg, { event: event, user: user })
+    await bot.telegram.sendMessage(author.telegram_id, notification, { parse_mode: 'HTML' })
+}
+
 
 if (process.env.NODE_ENV === "production") {
     // Creating the web server with webhooks

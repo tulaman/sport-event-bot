@@ -124,3 +124,9 @@ info_changed_notification: |
   запланированное на {{event.formatted_date}} {{event.time}}
   было изменено на:
   <b>{{new_info}}</b>
+
+joined_notification: |
+  У вас новый участник на мероприятии <b>{{event.type}}</b>,
+  запланированном на {{event.formatted_date}} {{event.formatted_time}}.
+  К вам присоединился:
+  {{#user.nickname}}@{{user.nickname}}{{/user.nickname}}{{^user.nickname}}{{user.username}}{{/user.nickname}}.
