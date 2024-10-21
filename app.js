@@ -16,8 +16,7 @@ const calendar = new Calendar(bot, {
     language: 'ru',
     bot_api: 'telegraf',
     start_week_day: 1,
-    start_date: new Date(),
-    stop_date: new Date(new Date().setMonth(new Date().getMonth() + 3))
+    start_date: new Date()
 })
 
 // Button labels
@@ -73,12 +72,14 @@ bot.command('create', async (ctx) => {
 
 // - Find runs for today, this week, this month
 bot.command('find', async (ctx) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const events_full = await Event.findAll({
         include: { model: User, as: 'author' },
         where: {
             author_id: { [Op.ne]: ctx.user.id },
             date: {
-                [Op.gte]: new Date
+                [Op.gte]: today
             }
         }
     })
@@ -115,9 +116,11 @@ bot.command('my_events', async (ctx) => {
 
 // - List all runs created by me 
 bot.action('imauthor', async (ctx) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const events = await Event.findAll({
         include: { model: User, as: 'author' },
-        where: { author_id: ctx.user.id, date: { [Op.gte]: new Date() } },
+        where: { author_id: ctx.user.id, date: { [Op.gte]: today } },
         order: [['date', 'ASC']]
     })
     await ctx.deleteMessage()
@@ -140,12 +143,15 @@ bot.action('imauthor', async (ctx) => {
 
 // - List all runs I have joined to
 bot.action('imparticipant', async (ctx) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const userId = ctx.from.id
     const user = await User.findOne({
         include: [{
             model: Event,
             as: 'events_as_participant',
-            required: false
+            required: false,
+            where: { date: { [Op.gte]: today } }
         }],
         where: { telegram_id: userId }
     })
