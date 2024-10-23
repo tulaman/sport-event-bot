@@ -1,7 +1,7 @@
 {
     "VERSION": "1.0.0",
     "PORT": 8080,
-    "public_channel_id": "@test_sport_event",
+    "public_channel_id": "@test_group_for_sport_event_bot",
     "event_types": [
         "🏃‍♂️ Бег",
         "🚴‍♀️ Велосипед",

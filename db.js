@@ -1,6 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize')
 const config = require('./config')
 const fs = require('fs')
+const { formatTime } = require('./utils')
 
 // Путь к файлу CA сертификата
 const caCertificate = fs.readFileSync('./config/ca-certificate.crt');
@@ -83,6 +84,13 @@ const Event = sequelize.define(
         author_id: {
             type: DataTypes.INTEGER,
             allowNull: false
+        },
+        formatted_time: {
+            type: DataTypes.VIRTUAL,
+            get() {
+                // Форматирование времени в формат "HH:mm"
+                return formatTime(this.time)
+            }
         }
     }
 )

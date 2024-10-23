@@ -16,8 +16,7 @@ const calendar = new Calendar(bot, {
     language: 'ru',
     bot_api: 'telegraf',
     start_week_day: 1,
-    start_date: new Date(),
-    stop_date: new Date(new Date().setMonth(new Date().getMonth() + 3))
+    start_date: new Date()
 })
 
 // Button labels
@@ -92,9 +91,11 @@ bot.command('my_events', async (ctx) => {
 
 // - List all runs created by me 
 bot.action('imauthor', async (ctx) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const events = await Event.findAll({
         include: { model: User, as: 'author' },
-        where: { author_id: ctx.user.id, date: { [Op.gte]: new Date() } },
+        where: { author_id: ctx.user.id, date: { [Op.gte]: today } },
         order: [['date', 'ASC']]
     })
     await ctx.deleteMessage()
@@ -117,12 +118,16 @@ bot.action('imauthor', async (ctx) => {
 
 // - List all runs I have joined to
 bot.action('imparticipant', async (ctx) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const userId = ctx.from.id
     const user = await User.findOne({
         include: [{
             model: Event,
             as: 'events_as_participant',
-            required: false
+            required: false,
+            where: { date: { [Op.gte]: today } },
+            order: [['date', 'ASC']]
         }],
         where: { telegram_id: userId }
     })
@@ -243,6 +248,8 @@ bot.on('callback_query', async (ctx) => {
         async toggleJoin(action) {
             if (action === 'join') {
                 await event.addParticipant(ctx.user)
+                // Notify the author
+                notifyTheAuthor(event, ctx.user, config.messages.joined_notification)
             } else {
                 await event.removeParticipant(ctx.user)
             }
@@ -487,6 +494,14 @@ const notifyParticipants = async (event, msg, params) => {
         })
     }
 }
+
+
+const notifyTheAuthor = async (event, user, msg) => {
+    const author = await User.findByPk(event.author_id)
+    const notification = mustache.render(msg, { event: event, user: user })
+    await bot.telegram.sendMessage(author.telegram_id, notification, { parse_mode: 'HTML' })
+}
+
 
 if (process.env.NODE_ENV === "production") {
     // Creating the web server with webhooks
