@@ -73,36 +73,13 @@ bot.command('create', async (ctx) => {
 
 // - Find runs for today, this week, this month
 bot.command('find', async (ctx) => {
-    const events_full = await Event.findAll({
-        include: { model: User, as: 'author' },
-        where: {
-            author_id: { [Op.ne]: ctx.user.id },
-            date: {
-                [Op.gte]: new Date
-            }
-        }
-    })
-    const events = []
-    for (let event of events_full) {
-        if (await event.hasParticipant(ctx.user.id)) {
-            continue
-        }
-        else {
-            events.push(event)
-        }
-    }
-    if (events.length === 0) {
-        ctx.reply(config.messages.no_new_events)
-    }
-    else {
-        for (const event of events) {
-            const keyboard = Markup.inlineKeyboard(
-                [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)]
-            )
-            const message = await eventInfo(event)
-            ctx.replyWithHTML(message, keyboard)
-        }
-    }
+    const keyboard = Markup.inlineKeyboard([
+        [Markup.button.callback(BUTTON_LABELS.find_today, 'find_today')],
+        [Markup.button.callback(BUTTON_LABELS.find_tomorrow, 'find_tomorrow')],
+        [Markup.button.callback(BUTTON_LABELS.find_week, 'find_week')],
+        [Markup.button.callback(BUTTON_LABELS.find_all, 'find_all')]
+    ])
+    ctx.reply('Показать мероприятия', keyboard)
 })
 
 bot.command('my_events', async (ctx) => {
@@ -174,6 +151,70 @@ for (const et of config.event_types) {
         ctx.replyWithHTML(config.messages.choose_location)
     })
 }
+
+
+// Helper function to find and display events
+async function findAndDisplayEvents(ctx, startDate, endDate, buttonLabel, noEventsMessage) {
+    const events = await Event.findAll({
+        where: {
+            date: {
+                [Op.gte]: startDate,
+                ...(endDate && { [Op.lt]: endDate })
+            }
+        },
+        include: { model: User, as: 'author' },
+        order: [['date', 'ASC'], ['time', 'ASC']]
+    });
+
+    if (events.length === 0) {
+        await ctx.reply(noEventsMessage);
+    } else {
+        await ctx.reply(`${buttonLabel}:`);
+        for (const event of events) {
+            const message = await eventInfo(event);
+            const keyboard = Markup.inlineKeyboard([
+                Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)
+            ]);
+            await ctx.replyWithHTML(message, keyboard);
+        }
+    }
+}
+
+bot.action('find_today', async (ctx) => {
+    await ctx.answerCbQuery();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    await findAndDisplayEvents(ctx, today, tomorrow, BUTTON_LABELS.find_today, config.messages.no_events_today);
+});
+
+bot.action('find_tomorrow', async (ctx) => {
+    await ctx.answerCbQuery();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const dayAfterTomorrow = new Date(tomorrow);
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+    await findAndDisplayEvents(ctx, tomorrow, dayAfterTomorrow, BUTTON_LABELS.find_tomorrow, config.messages.no_events_tomorrow);
+});
+
+bot.action('find_week', async (ctx) => {
+    await ctx.answerCbQuery();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    await findAndDisplayEvents(ctx, today, nextWeek, BUTTON_LABELS.find_week, config.messages.no_events_this_week);
+});
+
+bot.action('find_all', async (ctx) => {
+    await ctx.answerCbQuery();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    await findAndDisplayEvents(ctx, today, null, BUTTON_LABELS.find_all, config.messages.no_upcoming_events);
+});
+
 
 // Catch all callback handler
 bot.on('callback_query', async (ctx) => {
@@ -475,3 +516,4 @@ if (process.env.NODE_ENV === "production") {
 else {
     bot.launch()
 }
+

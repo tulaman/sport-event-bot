@@ -124,3 +124,11 @@ info_changed_notification: |
   запланированное на {{event.formatted_date}} {{event.time}}
   было изменено на:
   <b>{{new_info}}</b>
+
+no_events_today: На сегодня нет запланированных событий.
+
+no_events_tomorrow: На завтра нет запланированных событий.
+
+no_events_this_week: На ближайшую неделю нет запланированных событий.
+
+no_upcoming_events: На ближайшие события нет запланированных событий.
