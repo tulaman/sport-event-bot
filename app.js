@@ -240,9 +240,13 @@ bot.on('callback_query', async (ctx) => {
             const messengerId = config.public_channel_id
             const message = await eventInfo(event)
             const keyboard = Markup.inlineKeyboard([
-                Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)
+                [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)],
+                [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
             ])
-            await bot.telegram.sendMessage(messengerId, message, { parse_mode: 'HTML', reply_markup: keyboard.reply_markup })
+            await bot.telegram.sendMessage(messengerId, message, {
+                parse_mode: 'HTML',
+                reply_markup: keyboard.reply_markup
+            })
             await ctx.answerCbQuery(config.messages.event_published)
         },
         async toggleJoin(action) {
@@ -254,11 +258,22 @@ bot.on('callback_query', async (ctx) => {
                 await event.removeParticipant(ctx.user)
             }
 
+            const message = await eventInfo(event)
+            const keyboard = Markup.inlineKeyboard([
+                [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)],
+                [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
+            ])
+
             if (ctx.chat.type === 'private') {
-                const message = await eventInfo(event)
-                const keyboard = Markup.inlineKeyboard([
-                    Markup.button.callback(action === 'join' ? BUTTON_LABELS.unjoin : BUTTON_LABELS.join, `${action === 'join' ? 'unjoin' : 'join'}-${event.id}`)
-                ])
+                await ctx.editMessageText(message, {
+                    parse_mode: 'HTML',
+                    chat_id: ctx.callbackQuery.message.chat.id,
+                    message_id: ctx.callbackQuery.message.message_id,
+                    reply_markup: Markup.inlineKeyboard([
+                        Markup.button.callback(action === 'join' ? BUTTON_LABELS.unjoin : BUTTON_LABELS.join, `${action === 'join' ? 'unjoin' : 'join'}-${event.id}`)
+                    ]).reply_markup
+                })
+            } else {
                 await ctx.editMessageText(message, {
                     parse_mode: 'HTML',
                     chat_id: ctx.callbackQuery.message.chat.id,
