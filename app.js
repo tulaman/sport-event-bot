@@ -336,6 +336,9 @@ bot.on('callback_query', async (ctx) => {
 
 // Handler on any text from user
 bot.on(message('text'), async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return; // Игнорировать сообщения не из приватного чата
+    }
 
     // Validation functions
     const validate_date = (date) => {
