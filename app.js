@@ -251,9 +251,19 @@ bot.on('callback_query', async (ctx) => {
         },
         async toggleJoin(action) {
             if (action === 'join') {
-                await event.addParticipant(ctx.user)
+                // Check if user exists in the database
+                let user = await User.findOne({ where: { telegram_id: ctx.user.telegram_id } })
+                if (!user) {
+                    // If user does not exist, create a new user entry
+                    user = await User.create({
+                        telegram_id: ctx.user.telegram_id,
+                        username: ctx.from.first_name,
+                        nickname: ctx.from.username
+                    });
+                }
+                await event.addParticipant(user)
                 // Notify the author
-                notifyTheAuthor(event, ctx.user, config.messages.joined_notification)
+                notifyTheAuthor(event, user, config.messages.joined_notification)
             } else {
                 await event.removeParticipant(ctx.user)
             }
