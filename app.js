@@ -49,10 +49,11 @@ bot.use(async (ctx, next) => {
 // Start command
 bot.start(async (ctx) => {
     const userId = `${ctx.from.id}`
-    ctx.user = await User.findOrCreate({
+    const [user, created] = await User.findOrCreate({
         where: { telegram_id: userId },
         defaults: { telegram_id: userId, username: ctx.from.first_name, nickname: ctx.from.username }
     })
+    ctx.user = user
     ctx.reply(config.messages.start)
 })
 
@@ -250,46 +251,52 @@ bot.on('callback_query', async (ctx) => {
             await ctx.answerCbQuery(config.messages.event_published)
         },
         async toggleJoin(action) {
+            const userId = `${ctx.from.id}`
+            const [user, created] = await User.findOrCreate({
+                where: { telegram_id: userId },
+                defaults: { telegram_id: userId, username: ctx.from.first_name, nickname: ctx.from.username }
+            })
+            const is_joined = await event.hasParticipant(user)
+            ctx.user = user
+            let is_changed = false
             if (action === 'join') {
-                // Check if user exists in the database
-                let user = await User.findOne({ where: { telegram_id: ctx.user.telegram_id } })
-                if (!user) {
-                    // If user does not exist, create a new user entry
-                    user = await User.create({
-                        telegram_id: ctx.user.telegram_id,
-                        username: ctx.from.first_name,
-                        nickname: ctx.from.username
-                    });
+                // Add participant only if they are not already in the event
+                if (!is_joined) {
+                    await event.addParticipant(user)
+                    notifyTheAuthor(event, user, config.messages.joined_notification)
+                    is_changed = true
                 }
-                await event.addParticipant(user)
-                // Notify the author
-                notifyTheAuthor(event, user, config.messages.joined_notification)
             } else {
-                await event.removeParticipant(ctx.user)
+                // Remove participant only if they are in the event
+                if (is_joined) {
+                    await event.removeParticipant(user)
+                    is_changed = true
+                }
             }
 
-            const message = await eventInfo(event)
-            const keyboard = Markup.inlineKeyboard([
-                [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)],
-                [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
-            ])
+            if (is_changed) {
+                const message = await eventInfo(event)
+                const keyboard = Markup.inlineKeyboard([
+                    [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)],
+                    [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
+                ])
 
-            if (ctx.chat.type === 'private') {
-                await ctx.editMessageText(message, {
-                    parse_mode: 'HTML',
-                    chat_id: ctx.callbackQuery.message.chat.id,
-                    message_id: ctx.callbackQuery.message.message_id,
-                    reply_markup: Markup.inlineKeyboard([
-                        Markup.button.callback(action === 'join' ? BUTTON_LABELS.unjoin : BUTTON_LABELS.join, `${action === 'join' ? 'unjoin' : 'join'}-${event.id}`)
-                    ]).reply_markup
-                })
-            } else {
-                await ctx.editMessageText(message, {
-                    parse_mode: 'HTML',
-                    chat_id: ctx.callbackQuery.message.chat.id,
-                    message_id: ctx.callbackQuery.message.message_id,
-                    reply_markup: keyboard.reply_markup
-                })
+                if (ctx.chat.type === 'private') {
+                    await ctx.editMessageText(message, {
+                        parse_mode: 'HTML',
+                        chat_id: ctx.callbackQuery.message.chat.id,
+                        message_id: ctx.callbackQuery.message.message_id,
+                        reply_markup: keyboard.reply_markup
+                    })
+                } else {
+                    await ctx.editMessageText(message, {
+                        parse_mode: 'HTML',
+                        chat_id: ctx.callbackQuery.message.chat.id,
+                        message_id: ctx.callbackQuery.message.message_id,
+                        reply_markup: keyboard.reply_markup
+                    })
+                }
+
             }
 
             await ctx.answerCbQuery(action === 'join' ? config.messages.event_joined : config.messages.event_unjoined)
