@@ -75,6 +75,9 @@ bot.command('help', (ctx) => {
 // Commands to interact with the bot
 // - Create a new run
 bot.command('create', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
     ctx.session.state = 'choose_date'
     ctx.session.new_event = { author_id: ctx.user.id }
     //ctx.reply(config.messages.choose_date)
@@ -83,6 +86,9 @@ bot.command('create', async (ctx) => {
 
 // - Find runs for today, this week, this month
 bot.command('find', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
     const keyboard = Markup.inlineKeyboard([
         [Markup.button.callback(BUTTON_LABELS.find_today, 'find_today')],
         [Markup.button.callback(BUTTON_LABELS.find_tomorrow, 'find_tomorrow')],
@@ -93,6 +99,9 @@ bot.command('find', async (ctx) => {
 })
 
 bot.command('my_events', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
     ctx.replyWithHTML(config.messages.choose_category, Markup.inlineKeyboard(
         [
             [Markup.button.callback(config.messages.i_m_author, 'imauthor')],
