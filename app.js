@@ -509,13 +509,17 @@ process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
 // TODO:
-// - edit event + notifications to participants
 // - notifications about event (1 hour before)
 
 const eventInfo = async (event) => {
     const participants = []
     for (const x of await event.getParticipants()) {
-        participants.push(`<a href="tg://user?id=${x.telegram_id}">${x.username}</a>`)
+        if (x.nickname) {
+            participants.push(`@${x.nickname}`)
+        }
+        else {
+            participants.push(x.username)
+        }
     }
     const message = mustache.render(config.messages.event_info, {
         title: formatDate(event.date),
