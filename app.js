@@ -11,6 +11,16 @@ const Op = sequelize.Op
 const Calendar = require('telegram-inline-calendar')
 
 const bot = new Telegraf(process.env.TG_TOKEN)
+
+bot.telegram.setMyCommands(
+    [
+        { command: 'create', description: 'Создать новое мероприятие' },
+        { command: 'find', description: 'Найти мероприятия' },
+        { command: 'my_events', description: 'Мои мероприятия' },
+    ],
+    { scope: { type: 'all_private_chats' } } // Видимость команд только в приватных чатах
+)
+
 const calendar = new Calendar(bot, {
     date_format: 'YYYY-MM-DD',
     language: 'ru',
@@ -496,12 +506,7 @@ process.once('SIGTERM', () => bot.stop('SIGTERM'))
 const eventInfo = async (event) => {
     const participants = []
     for (const x of await event.getParticipants()) {
-        if (x.nickname) {
-            participants.push(`@${x.nickname}`)
-        }
-        else {
-            participants.push(x.username)
-        }
+        participants.push(`<a href="tg://user?id=${x.telegram_id}">${x.username}</a>`)
     }
     const message = mustache.render(config.messages.event_info, {
         title: formatDate(event.date),
