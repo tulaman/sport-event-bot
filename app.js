@@ -111,6 +111,9 @@ bot.command('my_events', async (ctx) => {
 
 // - List all runs created by me 
 bot.action('imauthor', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const events = await Event.findAll({
@@ -138,6 +141,9 @@ bot.action('imauthor', async (ctx) => {
 
 // - List all runs I have joined to
 bot.action('imparticipant', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const userId = ctx.from.id
@@ -180,6 +186,9 @@ for (const et of config.event_types) {
 
 // Helper function to find and display events
 async function findAndDisplayEvents(ctx, startDate, endDate, buttonLabel, noEventsMessage) {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
     const events = await Event.findAll({
         where: {
             date: {
