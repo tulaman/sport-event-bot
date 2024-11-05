@@ -15,6 +15,7 @@ const mustache = require('mustache')
 const sequelize = require('sequelize')
 const Op = sequelize.Op
 const Calendar = require('telegram-inline-calendar')
+const dayjs = require('dayjs')
 
 const bot = new Telegraf(process.env.TG_TOKEN)
 
@@ -31,12 +32,22 @@ bot.telegram.setMyCommands(
     { scope: { type: 'all_private_chats' } } // Видимость команд только в приватных чатах
 )
 
-const calendar = new Calendar(bot, {
+// Create separate calendars for different purposes
+const createEventCalendar = new Calendar(bot, {
     date_format: 'YYYY-MM-DD',
     language: 'ru',
     bot_api: 'telegraf',
     start_week_day: 1,
     start_date: new Date(),
+})
+
+const findEventCalendar = new Calendar(bot, {
+    date_format: 'YYYY-MM-DD',
+    language: 'ru',
+    bot_api: 'telegraf',
+    start_week_day: 1,
+    start_date: new Date(),
+    lock_date: true,
 })
 
 // Button labels
@@ -97,8 +108,8 @@ bot.command('create', async (ctx) => {
     }
     ctx.session.state = 'choose_date'
     ctx.session.new_event = { author_id: ctx.user.id }
-    //ctx.reply(config.messages.choose_date)
-    calendar.startNavCalendar(ctx.message)
+    ctx.session.calendar_type = 'create'
+    createEventCalendar.startNavCalendar(ctx.message)
 })
 
 // - Find runs for today, this week, this month
@@ -334,15 +345,43 @@ bot.action('find_week', async (ctx) => {
 
 bot.action('find_all', async (ctx) => {
     await ctx.answerCbQuery()
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    await findAndDisplayEvents(
-        ctx,
-        today,
-        null,
-        BUTTON_LABELS.find_all,
-        config.messages.no_upcoming_events
-    )
+
+    const events = await Event.findAll({
+        where: {
+            date: {
+                [Op.gte]: today,
+            },
+        },
+        order: [
+            ['date', 'ASC'],
+            ['time', 'ASC'],
+        ],
+    })
+
+    const eventDates = events.map((event) => {
+        return dayjs(event.date).format('YYYY-MM-DD')
+    })
+
+    // Lock all dates except those with events
+    findEventCalendar.lock_date_array = []
+    let currentDate = dayjs(today)
+    const endDate = dayjs(today).add(3, 'months')
+
+    while (currentDate.isBefore(endDate)) {
+        const dateStr = currentDate.format('YYYY-MM-DD')
+        if (!eventDates.includes(dateStr)) {
+            findEventCalendar.lock_date_array.push(dateStr)
+        }
+        currentDate = currentDate.add(1, 'day')
+    }
+
+    ctx.session.state = 'find_events_on_date'
+    ctx.session.calendar_type = 'find'
+
+    findEventCalendar.startNavCalendar(ctx.msg)
 })
 
 // Catch all callback handler
@@ -505,15 +544,35 @@ bot.on('callback_query', async (ctx) => {
             await ctx.replyWithHTML(message)
         },
         async default() {
-            if (
-                ctx.callbackQuery.message.message_id ==
-                calendar.chats.get(ctx.callbackQuery.message.chat.id)
-            ) {
+            const calendarMessageId =
+                ctx.session.calendar_type === 'create'
+                    ? createEventCalendar.chats.get(
+                          ctx.callbackQuery.message.chat.id
+                      )
+                    : findEventCalendar.chats.get(
+                          ctx.callbackQuery.message.chat.id
+                      )
+
+            if (ctx.callbackQuery.message.message_id == calendarMessageId) {
+                const calendar =
+                    ctx.session.calendar_type === 'create'
+                        ? createEventCalendar
+                        : findEventCalendar
                 const res = calendar.clickButtonCalendar(ctx.callbackQuery)
                 if (res !== -1) {
-                    ctx.session.new_event['date'] = res
-                    ctx.session.state = 'choose_time'
-                    await ctx.replyWithHTML(config.messages.choose_time)
+                    if (ctx.session.state === 'find_events_on_date') {
+                        await findAndDisplayEvents(
+                            ctx,
+                            dayjs(res).toDate(),
+                            dayjs(res).add(1, 'day').toDate(),
+                            BUTTON_LABELS.find_date,
+                            config.messages.no_upcoming_events
+                        )
+                    } else {
+                        ctx.session.new_event['date'] = res
+                        ctx.session.state = 'choose_time'
+                        await ctx.replyWithHTML(config.messages.choose_time)
+                    }
                 }
             } else {
                 await ctx.reply(config.messages.unknown_command)
