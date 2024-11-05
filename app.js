@@ -23,6 +23,10 @@ bot.telegram.setMyCommands(
         { command: 'create', description: 'Создать новое мероприятие' },
         { command: 'find', description: 'Найти мероприятия' },
         { command: 'my_events', description: 'Мои мероприятия' },
+        {
+            command: 'announcement',
+            description: 'Опубликовать анонс мероприятий (только для админов)',
+        },
     ],
     { scope: { type: 'all_private_chats' } } // Видимость команд только в приватных чатах
 )
@@ -51,7 +55,7 @@ bot.catch((err, ctx) => {
 })
 
 bot.use(async (ctx, next) => {
-    const userId = ctx.from && ctx.from.id + ''
+    const userId = ctx.from?.id.toString()
     let user
     if (userId) {
         ctx.session = await loadSessionFromDatabase(userId)
@@ -127,6 +131,26 @@ bot.command('my_events', async (ctx) => {
             ],
         ])
     )
+})
+
+// Bot command handler
+bot.command('announcement', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
+
+    // Check if user is admin
+    if (!config.admin_ids?.includes(ctx.from.id)) {
+        await ctx.reply('У вас нет прав для выполнения этой команды')
+        return
+    }
+
+    await publishEventsToChannel(async (result) => {
+        if (!result.success) {
+            return ctx.reply(result.error)
+        }
+        return ctx.reply(result.message)
+    })
 })
 
 // - List all runs created by me
@@ -704,16 +728,14 @@ const notifyTheAuthor = async (event, user, msg) => {
     })
 }
 
-// Function to handle publishing today's events
-const publishTodayEvents = async (req, res) => {
+// Core function for publishing events
+async function publishEventsToChannel(respond) {
     try {
-        // Set the start of today and tomorrow for date filtering
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         const tomorrow = new Date(today)
         tomorrow.setDate(tomorrow.getDate() + 1)
 
-        // Fetch events scheduled for today
         const events = await Event.findAll({
             where: {
                 date: {
@@ -728,17 +750,14 @@ const publishTodayEvents = async (req, res) => {
             ],
         })
 
-        // Send a header message to the public channel
+        // Send header message to channel
         await bot.telegram.sendMessage(
             config.public_channel_id,
             config.messages.events_for_today,
-            {
-                parse_mode: 'HTML',
-            }
+            { parse_mode: 'HTML' }
         )
 
         if (events.length === 0) {
-            // If no events, send a message with a button to create a new event
             const message = config.messages.no_events_today2
             const keyboard = Markup.inlineKeyboard([
                 [
@@ -752,44 +771,66 @@ const publishTodayEvents = async (req, res) => {
                 parse_mode: 'HTML',
                 reply_markup: keyboard.reply_markup,
             })
-            res.send('No events scheduled for today.')
-        } else {
-            // Iterate over each event and send details to the public channel
-            for (let i = 0; i < events.length; i++) {
-                const event = events[i]
-                const message = await eventInfo(event)
-                let keyboard = null
-
-                // Add a "more" button only for the last event
-                if (i === events.length - 1) {
-                    keyboard = Markup.inlineKeyboard([
-                        [
-                            Markup.button.url(
-                                BUTTON_LABELS.more,
-                                `https://t.me/${config.BOT_USERNAME}`
-                            ),
-                        ],
-                    ])
-                }
-
-                await bot.telegram.sendMessage(
-                    config.public_channel_id,
-                    message,
-                    {
-                        parse_mode: 'HTML',
-                        reply_markup: keyboard
-                            ? keyboard.reply_markup
-                            : undefined,
-                    }
-                )
-            }
-            res.send(`${events.length} events published successfully.`)
+            return await respond({
+                success: true,
+                count: 0,
+                message: config.messages.publish_no_events,
+            })
         }
+
+        // Publish events
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i]
+            const message = await eventInfo(event)
+            let keyboard = null
+
+            if (i === events.length - 1) {
+                keyboard = Markup.inlineKeyboard([
+                    [
+                        Markup.button.url(
+                            BUTTON_LABELS.more,
+                            `https://t.me/${config.BOT_USERNAME}`
+                        ),
+                    ],
+                ])
+            }
+
+            await bot.telegram.sendMessage(config.public_channel_id, message, {
+                parse_mode: 'HTML',
+                reply_markup: keyboard ? keyboard.reply_markup : undefined,
+            })
+        }
+
+        return await respond({
+            success: true,
+            count: events.length,
+            message: mustache.render(config.messages.publish_success, {
+                count: events.length,
+            }),
+        })
     } catch (error) {
-        // Log any errors and send a 500 response
         console.error('Error publishing events:', error)
-        res.status(500).send('An error occurred while publishing events.')
+        return await respond({
+            success: false,
+            error: config.messages.publish_error,
+        })
     }
+}
+
+// Web endpoint handler
+const publishTodayEvents = async (req, res) => {
+    await publishEventsToChannel(async (result) => {
+        if (!result.success) {
+            return res.status(500).send(config.messages.web_publish_error)
+        }
+        return res.send(
+            result.count === 0
+                ? config.messages.web_no_events
+                : mustache.render(config.messages.web_publish_success, {
+                      count: result.count,
+                  })
+        )
+    })
 }
 
 if (process.env.NODE_ENV === 'production') {
