@@ -47,6 +47,7 @@ const findEventCalendar = new Calendar(bot, {
     bot_api: 'telegraf',
     start_week_day: 1,
     start_date: new Date(),
+    stop_date: dayjs().add(6, 'months').toDate(),
     lock_date: true,
 })
 
@@ -368,7 +369,7 @@ bot.action('find_all', async (ctx) => {
     // Lock all dates except those with events
     findEventCalendar.lock_date_array = []
     let currentDate = dayjs(today)
-    const endDate = dayjs(today).add(3, 'months')
+    const endDate = dayjs(today).add(1, 'day').add(6, 'months')
 
     while (currentDate.isBefore(endDate)) {
         const dateStr = currentDate.format('YYYY-MM-DD')
