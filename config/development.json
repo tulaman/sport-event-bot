@@ -1,4 +1,5 @@
 {
     "BOT_NAME": "[Dev] Run Orel Bot",
+    "BOT_USERNAME": "dev_sport_event_bot",
     "WEBHOOK_DOMAIN": "https://fe50-176-194-106-56.ngrok-free.app"
 }

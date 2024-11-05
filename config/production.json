@@ -1,6 +1,7 @@
 {
     "WEBHOOK_DOMAIN": "https://lobster-app-4j3gn.ondigitalocean.app",
     "BOT_NAME": "Run Orel Bot",
+    "BOT_USERNAME": "RunOrelBot",
     "DB_USER": "runorel",
     "DB_HOST": "run-orel-mysql-do-user-17978996-0.l.db.ondigitalocean.com",
     "DB_PORT": "25060",

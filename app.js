@@ -3,7 +3,13 @@ const config = require('./config')
 const { Telegraf, Markup } = require('telegraf')
 const express = require('express')
 const { message } = require('telegraf/filters')
-const { db, loadSessionFromDatabase, saveSessionToDatabase, Event, User } = require('./db')
+const {
+    db,
+    loadSessionFromDatabase,
+    saveSessionToDatabase,
+    Event,
+    User,
+} = require('./db')
 const { formatDate } = require('./utils')
 const mustache = require('mustache')
 const sequelize = require('sequelize')
@@ -26,7 +32,7 @@ const calendar = new Calendar(bot, {
     language: 'ru',
     bot_api: 'telegraf',
     start_week_day: 1,
-    start_date: new Date()
+    start_date: new Date(),
 })
 
 // Button labels
@@ -35,7 +41,10 @@ const BUTTON_LABELS = config.button_labels
 // Middleware to catch errors
 bot.catch((err, ctx) => {
     console.error(`❌ Error occured for ${ctx.updateType}`, err)
-    if (err.code === 403 && err.description === 'Forbidden: bot was blocked by the user') {
+    if (
+        err.code === 403 &&
+        err.description === 'Forbidden: bot was blocked by the user'
+    ) {
         console.log(`🛜 bot was blocked by the user: ${ctx.chat.id}`)
         removeUser(ctx.chat.id)
     }
@@ -53,7 +62,7 @@ bot.use(async (ctx, next) => {
     await next()
     // This next line will only run after all other middlewares and handlers are done
 
-    await saveSessionToDatabase(userId, ctx.session);
+    await saveSessionToDatabase(userId, ctx.session)
 })
 
 // Start command
@@ -61,7 +70,11 @@ bot.start(async (ctx) => {
     const userId = `${ctx.from.id}`
     const [user, created] = await User.findOrCreate({
         where: { telegram_id: userId },
-        defaults: { telegram_id: userId, username: ctx.from.first_name, nickname: ctx.from.username }
+        defaults: {
+            telegram_id: userId,
+            username: ctx.from.first_name,
+            nickname: ctx.from.username,
+        },
     })
     ctx.user = user
     ctx.reply(config.messages.start)
@@ -93,7 +106,7 @@ bot.command('find', async (ctx) => {
         [Markup.button.callback(BUTTON_LABELS.find_today, 'find_today')],
         [Markup.button.callback(BUTTON_LABELS.find_tomorrow, 'find_tomorrow')],
         [Markup.button.callback(BUTTON_LABELS.find_week, 'find_week')],
-        [Markup.button.callback(BUTTON_LABELS.find_all, 'find_all')]
+        [Markup.button.callback(BUTTON_LABELS.find_all, 'find_all')],
     ])
     ctx.reply('Показать мероприятия', keyboard)
 })
@@ -102,14 +115,21 @@ bot.command('my_events', async (ctx) => {
     if (ctx.chat.type !== 'private') {
         return
     }
-    ctx.replyWithHTML(config.messages.choose_category, Markup.inlineKeyboard(
-        [
+    ctx.replyWithHTML(
+        config.messages.choose_category,
+        Markup.inlineKeyboard([
             [Markup.button.callback(config.messages.i_m_author, 'imauthor')],
-            [Markup.button.callback(config.messages.i_m_participant, 'imparticipant')]
-        ]))
+            [
+                Markup.button.callback(
+                    config.messages.i_m_participant,
+                    'imparticipant'
+                ),
+            ],
+        ])
+    )
 })
 
-// - List all runs created by me 
+// - List all runs created by me
 bot.action('imauthor', async (ctx) => {
     if (ctx.chat.type !== 'private') {
         return
@@ -119,18 +139,32 @@ bot.action('imauthor', async (ctx) => {
     const events = await Event.findAll({
         include: { model: User, as: 'author' },
         where: { author_id: ctx.user.id, date: { [Op.gte]: today } },
-        order: [['date', 'ASC']]
+        order: [['date', 'ASC']],
     })
     await ctx.deleteMessage()
     if (events.length === 0) {
         ctx.reply(config.messages.no_events)
-    }
-    else {
+    } else {
         for (let event of events) {
             const buttons = [
-                [Markup.button.callback(BUTTON_LABELS.edit, `edit-${event.id}`)],
-                [Markup.button.callback(BUTTON_LABELS.delete, `delete-${event.id}`)],
-                [Markup.button.callback(BUTTON_LABELS.publish, `publish-${event.id}`)],
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.edit,
+                        `edit-${event.id}`
+                    ),
+                ],
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.delete,
+                        `delete-${event.id}`
+                    ),
+                ],
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.publish,
+                        `publish-${event.id}`
+                    ),
+                ],
             ]
             const keyboard = Markup.inlineKeyboard(buttons).oneTime().resize()
             const message = await eventInfo(event)
@@ -148,26 +182,32 @@ bot.action('imparticipant', async (ctx) => {
     today.setHours(0, 0, 0, 0)
     const userId = ctx.from.id
     const user = await User.findOne({
-        include: [{
-            model: Event,
-            as: 'events_as_participant',
-            required: false,
-            where: { date: { [Op.gte]: today } },
-            order: [['date', 'ASC']]
-        }],
-        where: { telegram_id: userId }
+        include: [
+            {
+                model: Event,
+                as: 'events_as_participant',
+                required: false,
+                where: { date: { [Op.gte]: today } },
+                order: [['date', 'ASC']],
+            },
+        ],
+        where: { telegram_id: userId },
     })
     const events = user.events_as_participant
     await ctx.deleteMessage()
     if (events.length === 0) {
         ctx.reply(config.messages.no_events)
-    }
-    else {
+    } else {
         for (const e of events) {
             const event = await Event.findByPk(e.id, {
-                include: { model: User, as: 'author' }
+                include: { model: User, as: 'author' },
             })
-            const buttons = [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
+            const buttons = [
+                Markup.button.callback(
+                    BUTTON_LABELS.unjoin,
+                    `unjoin-${event.id}`
+                ),
+            ]
             const keyboard = Markup.inlineKeyboard(buttons)
             const message = await eventInfo(event)
             ctx.replyWithHTML(message, keyboard)
@@ -183,9 +223,14 @@ for (const et of config.event_types) {
     })
 }
 
-
 // Helper function to find and display events
-async function findAndDisplayEvents(ctx, startDate, endDate, buttonLabel, noEventsMessage) {
+async function findAndDisplayEvents(
+    ctx,
+    startDate,
+    endDate,
+    buttonLabel,
+    noEventsMessage
+) {
     if (ctx.chat.type !== 'private') {
         return
     }
@@ -193,74 +238,103 @@ async function findAndDisplayEvents(ctx, startDate, endDate, buttonLabel, noEven
         where: {
             date: {
                 [Op.gte]: startDate,
-                ...(endDate && { [Op.lt]: endDate })
-            }
+                ...(endDate && { [Op.lt]: endDate }),
+            },
         },
         include: { model: User, as: 'author' },
-        order: [['date', 'ASC'], ['time', 'ASC']]
-    });
+        order: [
+            ['date', 'ASC'],
+            ['time', 'ASC'],
+        ],
+    })
 
     if (events.length === 0) {
-        await ctx.reply(noEventsMessage);
+        await ctx.reply(noEventsMessage)
     } else {
-        await ctx.reply(`${buttonLabel}:`);
+        await ctx.reply(`${buttonLabel}:`)
         for (const event of events) {
-            const message = await eventInfo(event);
+            const message = await eventInfo(event)
             const keyboard = Markup.inlineKeyboard([
-                Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)
-            ]);
-            await ctx.replyWithHTML(message, keyboard);
+                Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`),
+            ])
+            await ctx.replyWithHTML(message, keyboard)
         }
     }
 }
 
 bot.action('find_today', async (ctx) => {
-    await ctx.answerCbQuery();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    await findAndDisplayEvents(ctx, today, tomorrow, BUTTON_LABELS.find_today, config.messages.no_events_today);
-});
+    await ctx.answerCbQuery()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    await findAndDisplayEvents(
+        ctx,
+        today,
+        tomorrow,
+        BUTTON_LABELS.find_today,
+        config.messages.no_events_today
+    )
+})
 
 bot.action('find_tomorrow', async (ctx) => {
-    await ctx.answerCbQuery();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    const dayAfterTomorrow = new Date(tomorrow);
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
-    await findAndDisplayEvents(ctx, tomorrow, dayAfterTomorrow, BUTTON_LABELS.find_tomorrow, config.messages.no_events_tomorrow);
-});
+    await ctx.answerCbQuery()
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+    const dayAfterTomorrow = new Date(tomorrow)
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1)
+    await findAndDisplayEvents(
+        ctx,
+        tomorrow,
+        dayAfterTomorrow,
+        BUTTON_LABELS.find_tomorrow,
+        config.messages.no_events_tomorrow
+    )
+})
 
 bot.action('find_week', async (ctx) => {
-    await ctx.answerCbQuery();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    await findAndDisplayEvents(ctx, today, nextWeek, BUTTON_LABELS.find_week, config.messages.no_events_this_week);
-});
+    await ctx.answerCbQuery()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const nextWeek = new Date(today)
+    nextWeek.setDate(nextWeek.getDate() + 7)
+    await findAndDisplayEvents(
+        ctx,
+        today,
+        nextWeek,
+        BUTTON_LABELS.find_week,
+        config.messages.no_events_this_week
+    )
+})
 
 bot.action('find_all', async (ctx) => {
-    await ctx.answerCbQuery();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    await findAndDisplayEvents(ctx, today, null, BUTTON_LABELS.find_all, config.messages.no_upcoming_events);
-});
-
+    await ctx.answerCbQuery()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    await findAndDisplayEvents(
+        ctx,
+        today,
+        null,
+        BUTTON_LABELS.find_all,
+        config.messages.no_upcoming_events
+    )
+})
 
 // Catch all callback handler
 bot.on('callback_query', async (ctx) => {
     const callbackData = ctx.callbackQuery.data
     const eventId = callbackData.split('-')[1]
     const event = await Event.findByPk(eventId, {
-        include: { model: User, as: 'author' }
+        include: { model: User, as: 'author' },
     })
 
     const handlers = {
         async delete() {
-            notifyParticipants(event, config.messages.event_deleted_notification)
+            notifyParticipants(
+                event,
+                config.messages.event_deleted_notification
+            )
             await Event.destroy({ where: { id: eventId } })
             await ctx.deleteMessage()
             await ctx.answerCbQuery(config.messages.event_deleted)
@@ -269,12 +343,22 @@ bot.on('callback_query', async (ctx) => {
             const messengerId = config.public_channel_id
             const message = await eventInfo(event)
             const keyboard = Markup.inlineKeyboard([
-                [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)],
-                [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.join,
+                        `join-${event.id}`
+                    ),
+                ],
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.unjoin,
+                        `unjoin-${event.id}`
+                    ),
+                ],
             ])
             await bot.telegram.sendMessage(messengerId, message, {
                 parse_mode: 'HTML',
-                reply_markup: keyboard.reply_markup
+                reply_markup: keyboard.reply_markup,
             })
             await ctx.answerCbQuery(config.messages.event_published)
         },
@@ -282,7 +366,11 @@ bot.on('callback_query', async (ctx) => {
             const userId = `${ctx.from.id}`
             const [user, created] = await User.findOrCreate({
                 where: { telegram_id: userId },
-                defaults: { telegram_id: userId, username: ctx.from.first_name, nickname: ctx.from.username }
+                defaults: {
+                    telegram_id: userId,
+                    username: ctx.from.first_name,
+                    nickname: ctx.from.username,
+                },
             })
             const is_joined = await event.hasParticipant(user)
             ctx.user = user
@@ -291,7 +379,11 @@ bot.on('callback_query', async (ctx) => {
                 // Add participant only if they are not already in the event
                 if (!is_joined) {
                     await event.addParticipant(user)
-                    notifyTheAuthor(event, user, config.messages.joined_notification)
+                    notifyTheAuthor(
+                        event,
+                        user,
+                        config.messages.joined_notification
+                    )
                     is_changed = true
                 }
             } else {
@@ -305,8 +397,18 @@ bot.on('callback_query', async (ctx) => {
             if (is_changed) {
                 const message = await eventInfo(event)
                 const keyboard = Markup.inlineKeyboard([
-                    [Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`)],
-                    [Markup.button.callback(BUTTON_LABELS.unjoin, `unjoin-${event.id}`)]
+                    [
+                        Markup.button.callback(
+                            BUTTON_LABELS.join,
+                            `join-${event.id}`
+                        ),
+                    ],
+                    [
+                        Markup.button.callback(
+                            BUTTON_LABELS.unjoin,
+                            `unjoin-${event.id}`
+                        ),
+                    ],
                 ])
 
                 if (ctx.chat.type === 'private') {
@@ -314,20 +416,23 @@ bot.on('callback_query', async (ctx) => {
                         parse_mode: 'HTML',
                         chat_id: ctx.callbackQuery.message.chat.id,
                         message_id: ctx.callbackQuery.message.message_id,
-                        reply_markup: keyboard.reply_markup
+                        reply_markup: keyboard.reply_markup,
                     })
                 } else {
                     await ctx.editMessageText(message, {
                         parse_mode: 'HTML',
                         chat_id: ctx.callbackQuery.message.chat.id,
                         message_id: ctx.callbackQuery.message.message_id,
-                        reply_markup: keyboard.reply_markup
+                        reply_markup: keyboard.reply_markup,
                     })
                 }
-
             }
 
-            await ctx.answerCbQuery(action === 'join' ? config.messages.event_joined : config.messages.event_unjoined)
+            await ctx.answerCbQuery(
+                action === 'join'
+                    ? config.messages.event_joined
+                    : config.messages.event_unjoined
+            )
         },
         async editField(field, state) {
             const message = mustache.render(config.messages[field], { event })
@@ -346,11 +451,29 @@ bot.on('callback_query', async (ctx) => {
         },
         async edit() {
             const buttons = [
-                [Markup.button.callback(BUTTON_LABELS.edit_time, `edit_time-${eventId}`)],
-                [Markup.button.callback(BUTTON_LABELS.edit_place, `edit_place-${eventId}`)],
-                [Markup.button.callback(BUTTON_LABELS.edit_info, `edit_info-${eventId}`)]
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.edit_time,
+                        `edit_time-${eventId}`
+                    ),
+                ],
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.edit_place,
+                        `edit_place-${eventId}`
+                    ),
+                ],
+                [
+                    Markup.button.callback(
+                        BUTTON_LABELS.edit_info,
+                        `edit_info-${eventId}`
+                    ),
+                ],
             ]
-            await ctx.reply(config.messages.edit_message, Markup.inlineKeyboard(buttons))
+            await ctx.reply(
+                config.messages.edit_message,
+                Markup.inlineKeyboard(buttons)
+            )
         },
         async info() {
             const message = await eventInfo(event)
@@ -358,7 +481,10 @@ bot.on('callback_query', async (ctx) => {
             await ctx.replyWithHTML(message)
         },
         async default() {
-            if (ctx.callbackQuery.message.message_id == calendar.chats.get(ctx.callbackQuery.message.chat.id)) {
+            if (
+                ctx.callbackQuery.message.message_id ==
+                calendar.chats.get(ctx.callbackQuery.message.chat.id)
+            ) {
                 const res = calendar.clickButtonCalendar(ctx.callbackQuery)
                 if (res !== -1) {
                     ctx.session.new_event['date'] = res
@@ -368,21 +494,21 @@ bot.on('callback_query', async (ctx) => {
             } else {
                 await ctx.reply(config.messages.unknown_command)
             }
-        }
+        },
     }
 
     const action = callbackData.split('-')[0]
     if (action === 'join' || action === 'unjoin') {
         await handlers.toggleJoin(action)
     } else {
-        (handlers[action] || handlers.default)()
+        ;(handlers[action] || handlers.default)()
     }
 })
 
 // Handler on any text from user
 bot.on(message('text'), async (ctx) => {
     if (ctx.chat.type !== 'private') {
-        return; // Игнорировать сообщения не из приватного чата
+        return // Игнорировать сообщения не из приватного чата
     }
 
     // Validation functions
@@ -408,87 +534,98 @@ bot.on(message('text'), async (ctx) => {
         buttons.push([Markup.button.callback(et, et)])
     }
     const dispatch = {
-        'choose_date': {
+        choose_date: {
             next: 'choose_time',
             message: config.messages.choose_time,
             attr: 'date',
-            validation: validate_date
+            validation: validate_date,
         },
-        'choose_time': {
+        choose_time: {
             next: 'choose_type',
             message: config.messages.choose_type,
             keyboard: Markup.inlineKeyboard(buttons),
             attr: 'time',
-            validation: validate_time
+            validation: validate_time,
         },
-        'choose_type': {
+        choose_type: {
             next: 'choose_location',
             attr: 'type',
-            message: config.messages.choose_location
+            message: config.messages.choose_location,
         },
-        'choose_location': {
+        choose_location: {
             next: 'choose_distance',
             attr: 'location',
-            message: config.messages.choose_distance
+            message: config.messages.choose_distance,
         },
-        'choose_distance': {
+        choose_distance: {
             next: 'choose_pace',
             attr: 'distance',
-            message: config.messages.choose_pace
+            message: config.messages.choose_pace,
         },
-        'choose_pace': {
+        choose_pace: {
             next: 'enter_additional_info',
             attr: 'pace',
-            message: config.messages.enter_additional_info
+            message: config.messages.enter_additional_info,
         },
-        'enter_additional_info': {
+        enter_additional_info: {
             next: '',
             attr: 'additional_info',
             message: config.messages.event_created,
-            action: save_event
+            action: save_event,
         },
-        'save_new_time': {
+        save_new_time: {
             next: '',
             attr: '',
             message: config.messages.time_saved,
             validation: validate_time,
             action: async (ctx) => {
                 const event = await Event.findByPk(ctx.session.edit_event_id)
-                notifyParticipants(event, config.messages.time_changed_notification, { new_time: ctx.message.text })
+                notifyParticipants(
+                    event,
+                    config.messages.time_changed_notification,
+                    { new_time: ctx.message.text }
+                )
                 event.time = ctx.message.text
                 await event.save()
-            }
+            },
         },
-        'save_new_location': {
+        save_new_location: {
             next: '',
             attr: '',
             message: config.messages.location_saved,
             action: async (ctx) => {
                 const event = await Event.findByPk(ctx.session.edit_event_id)
-                notifyParticipants(event, config.messages.location_changed_notification, { new_location: ctx.message.text })
+                notifyParticipants(
+                    event,
+                    config.messages.location_changed_notification,
+                    { new_location: ctx.message.text }
+                )
                 event.location = ctx.message.text
                 await event.save()
-            }
+            },
         },
-        'save_new_info': {
+        save_new_info: {
             next: '',
             attr: '',
             message: config.messages.info_saved,
             action: async (ctx) => {
                 const event = await Event.findByPk(ctx.session.edit_event_id)
-                notifyParticipants(event, config.messages.info_changed_notification, { new_info: ctx.message.text })
+                notifyParticipants(
+                    event,
+                    config.messages.info_changed_notification,
+                    { new_info: ctx.message.text }
+                )
                 event.additional_info = ctx.message.text
                 await event.save()
-            }
-        }
+            },
+        },
     }
 
     const state = ctx.session.state
 
     if (state in dispatch) {
         const mode = dispatch[state]
-        if (mode.validation &&
-            !mode.validation(ctx.message.text)) {
+        if (mode.validation && !mode.validation(ctx.message.text)) {
             await ctx.reply(config.messages.invalid_input)
             return
         }
@@ -496,8 +633,10 @@ bot.on(message('text'), async (ctx) => {
         ctx.session.new_event[mode.attr] = ctx.message.text
         ctx.session.state = mode.next
         let message = mode.message
-        if (state === 'choose_location' &&
-            config.static_events.includes(ctx.session.new_event['type'])) {
+        if (
+            state === 'choose_location' &&
+            config.static_events.includes(ctx.session.new_event['type'])
+        ) {
             ctx.session.state = 'enter_additional_info'
             message = config.messages.enter_additional_info
         }
@@ -507,8 +646,7 @@ bot.on(message('text'), async (ctx) => {
         }
 
         await ctx.replyWithHTML(message, mode.keyboard)
-    }
-    else {
+    } else {
         ctx.reply(config.messages.unknown_command)
     }
 })
@@ -525,15 +663,14 @@ const eventInfo = async (event) => {
     for (const x of await event.getParticipants()) {
         if (x.nickname) {
             participants.push(`@${x.nickname}`)
-        }
-        else {
+        } else {
             participants.push(x.username)
         }
     }
     const message = mustache.render(config.messages.event_info, {
         title: formatDate(event.date),
         event: event,
-        participants: participants.join(', ')
+        participants: participants.join(', '),
     })
     return message
 }
@@ -548,24 +685,114 @@ const notifyParticipants = async (event, msg, params) => {
     event['formatted_date'] = `${day}.${month}.${year}`
     vars['event'] = event
     const notification = mustache.render(msg, vars)
-    const buttons = [Markup.button.callback(BUTTON_LABELS.info, `info-${event.id}`)]
+    const buttons = [
+        Markup.button.callback(BUTTON_LABELS.info, `info-${event.id}`),
+    ]
     for (const p of participants) {
         await bot.telegram.sendMessage(p.telegram_id, notification, {
             parse_mode: 'HTML',
-            reply_markup: Markup.inlineKeyboard(buttons).reply_markup
+            reply_markup: Markup.inlineKeyboard(buttons).reply_markup,
         })
     }
 }
 
-
 const notifyTheAuthor = async (event, user, msg) => {
     const author = await User.findByPk(event.author_id)
     const notification = mustache.render(msg, { event: event, user: user })
-    await bot.telegram.sendMessage(author.telegram_id, notification, { parse_mode: 'HTML' })
+    await bot.telegram.sendMessage(author.telegram_id, notification, {
+        parse_mode: 'HTML',
+    })
 }
 
+// Function to handle publishing today's events
+const publishTodayEvents = async (req, res) => {
+    try {
+        // Set the start of today and tomorrow for date filtering
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
 
-if (process.env.NODE_ENV === "production") {
+        // Fetch events scheduled for today
+        const events = await Event.findAll({
+            where: {
+                date: {
+                    [Op.gte]: today,
+                    [Op.lt]: tomorrow,
+                },
+            },
+            include: { model: User, as: 'author' },
+            order: [
+                ['date', 'ASC'],
+                ['time', 'ASC'],
+            ],
+        })
+
+        // Send a header message to the public channel
+        await bot.telegram.sendMessage(
+            config.public_channel_id,
+            config.messages.events_for_today,
+            {
+                parse_mode: 'HTML',
+            }
+        )
+
+        if (events.length === 0) {
+            // If no events, send a message with a button to create a new event
+            const message = config.messages.no_events_today2
+            const keyboard = Markup.inlineKeyboard([
+                [
+                    Markup.button.url(
+                        BUTTON_LABELS.create,
+                        `https://t.me/${config.BOT_USERNAME}`
+                    ),
+                ],
+            ])
+            await bot.telegram.sendMessage(config.public_channel_id, message, {
+                parse_mode: 'HTML',
+                reply_markup: keyboard.reply_markup,
+            })
+            res.send('No events scheduled for today.')
+        } else {
+            // Iterate over each event and send details to the public channel
+            for (let i = 0; i < events.length; i++) {
+                const event = events[i]
+                const message = await eventInfo(event)
+                let keyboard = null
+
+                // Add a "more" button only for the last event
+                if (i === events.length - 1) {
+                    keyboard = Markup.inlineKeyboard([
+                        [
+                            Markup.button.url(
+                                BUTTON_LABELS.more,
+                                `https://t.me/${config.BOT_USERNAME}`
+                            ),
+                        ],
+                    ])
+                }
+
+                await bot.telegram.sendMessage(
+                    config.public_channel_id,
+                    message,
+                    {
+                        parse_mode: 'HTML',
+                        reply_markup: keyboard
+                            ? keyboard.reply_markup
+                            : undefined,
+                    }
+                )
+            }
+            res.send(`${events.length} events published successfully.`)
+        }
+    } catch (error) {
+        // Log any errors and send a 500 response
+        console.error('Error publishing events:', error)
+        res.status(500).send('An error occurred while publishing events.')
+    }
+}
+
+if (process.env.NODE_ENV === 'production') {
     // Creating the web server with webhooks
     const PORT = config.PORT || 3000
     const app = express()
@@ -579,6 +806,9 @@ if (process.env.NODE_ENV === "production") {
     }
     setupWebhook().catch(console.error)
 
+    // New endpoint to publish today's events
+    app.get('/publish-today-events', publishTodayEvents)
+
     // The signature
     app.get('/about', (req, res) => {
         res.send(`
@@ -586,11 +816,9 @@ if (process.env.NODE_ENV === "production") {
         <b>© Ilya Lityuga, 2024</b>`)
     })
 
-    app.listen(PORT, () => {
-        console.log(`* Listening on ${config.WEBHOOK_DOMAIN}:${config.PORT}`)
+    app.listen(PORT, async () => {
+        console.log(`* Listening on ${config.WEBHOOK_DOMAIN}:${PORT}`)
     })
-}
-else {
+} else {
     bot.launch()
 }
-
