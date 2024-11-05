@@ -1,0 +1,63 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+databases:
+- cluster_name: run-orel-mysql
+  db_name: runorel
+  db_user: runorel
+  engine: MYSQL
+  name: run-orel-mysql
+  production: true
+  version: "8"
+envs:
+- key: NODE_ENV
+  scope: RUN_AND_BUILD_TIME
+  value: production
+features:
+- buildpack-stack=ubuntu-22
+ingress:
+  rules:
+  - component:
+      name: sport-event-bot
+    match:
+      path:
+        prefix: /
+name: run-orel-app
+region: fra
+services:
+- environment_slug: node-js
+  envs:
+  - key: DOTENV_PRIVATE_KEY_PRODUCTION
+    scope: RUN_AND_BUILD_TIME
+    value: 886b3707c494ab97718a2f5bf75aaeaaa0ceb3c809735bc83e2dba30c235767b
+  - key: DATABASE_URL
+    scope: RUN_TIME
+    value: ${run-orel-mysql.DATABASE_URL}
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: tulaman/sport-event-bot
+  health_check:
+    failure_threshold: 5
+    http_path: /about
+    initial_delay_seconds: 30
+    period_seconds: 10
+    port: 8080
+    success_threshold: 1
+    timeout_seconds: 5
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-1gb
+  name: sport-event-bot
+  run_command: npm start
+  source_dir: /
+workers:
+  - dockerfile_path: Dockerfile
+    github:
+      branch: main
+      deploy_on_push: true
+      repo: tulaman/docker-cron
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    name: docker-cron
+    source_dir: /
