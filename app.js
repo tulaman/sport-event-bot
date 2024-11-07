@@ -610,6 +610,7 @@ bot.on(message('text'), async (ctx) => {
         // Save the event to the database
         const event = new Event(ctx.session.new_event)
         await event.save()
+        ctx.session.new_event['id'] = event.id
     }
 
     // Dispatch object (all logic here)
@@ -655,7 +656,21 @@ bot.on(message('text'), async (ctx) => {
             next: '',
             attr: 'additional_info',
             message: config.messages.event_created,
-            action: save_event,
+            action: async (ctx) => {
+                await save_event(ctx)
+                // Создаем и отправляем клавиатуру после сохранения события
+                const keyboard = Markup.inlineKeyboard([
+                    [
+                        Markup.button.callback(
+                            BUTTON_LABELS.publish,
+                            `publish-${ctx.session.new_event.id}`
+                        ),
+                    ],
+                ])
+                await ctx.reply(config.messages.event_created, keyboard)
+                // Возвращаем false чтобы предотвратить стандартную отправку сообщения
+                return false
+            },
         },
         save_new_time: {
             next: '',
@@ -726,7 +741,8 @@ bot.on(message('text'), async (ctx) => {
         }
 
         if (mode.action) {
-            await mode.action(ctx)
+            const shouldSendMessage = await mode.action(ctx)
+            if (shouldSendMessage === false) return
         }
 
         await ctx.replyWithHTML(message, mode.keyboard)
