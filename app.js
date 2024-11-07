@@ -290,9 +290,34 @@ async function findAndDisplayEvents(
         await ctx.reply(`${buttonLabel}:`)
         for (const event of events) {
             const message = await eventInfo(event)
-            const keyboard = Markup.inlineKeyboard([
-                Markup.button.callback(BUTTON_LABELS.join, `join-${event.id}`),
-            ])
+            const userId = ctx.from.id
+            const user = await User.findOne({ where: { telegram_id: userId } })
+            const is_participant = await event.hasParticipant(user)
+
+            const buttons = [
+                [
+                    Markup.button.callback(
+                        is_participant
+                            ? BUTTON_LABELS.unjoin
+                            : BUTTON_LABELS.join,
+                        is_participant
+                            ? `unjoin-${event.id}`
+                            : `join-${event.id}`
+                    ),
+                ],
+            ]
+
+            // Add publish button for admins
+            if (config.admin_ids?.includes(ctx.from.id)) {
+                buttons.push([
+                    Markup.button.callback(
+                        BUTTON_LABELS.publish,
+                        `publish-${event.id}`
+                    ),
+                ])
+            }
+
+            const keyboard = Markup.inlineKeyboard(buttons)
             await ctx.replyWithHTML(message, keyboard)
         }
     }
@@ -460,36 +485,58 @@ bot.on('callback_query', async (ctx) => {
 
             if (is_changed) {
                 const message = await eventInfo(event)
-                const keyboard = Markup.inlineKeyboard([
-                    [
-                        Markup.button.callback(
-                            BUTTON_LABELS.join,
-                            `join-${event.id}`
-                        ),
-                    ],
-                    [
-                        Markup.button.callback(
-                            BUTTON_LABELS.unjoin,
-                            `unjoin-${event.id}`
-                        ),
-                    ],
-                ])
+                let buttons
 
                 if (ctx.chat.type === 'private') {
-                    await ctx.editMessageText(message, {
-                        parse_mode: 'HTML',
-                        chat_id: ctx.callbackQuery.message.chat.id,
-                        message_id: ctx.callbackQuery.message.message_id,
-                        reply_markup: keyboard.reply_markup,
-                    })
+                    // In private chat, show only one relevant button
+                    buttons = [
+                        [
+                            Markup.button.callback(
+                                action === 'join'
+                                    ? BUTTON_LABELS.unjoin
+                                    : BUTTON_LABELS.join,
+                                action === 'join'
+                                    ? `unjoin-${event.id}`
+                                    : `join-${event.id}`
+                            ),
+                        ],
+                    ]
+
+                    // Add publish button for admins
+                    if (config.admin_ids?.includes(ctx.from.id)) {
+                        buttons.push([
+                            Markup.button.callback(
+                                BUTTON_LABELS.publish,
+                                `publish-${event.id}`
+                            ),
+                        ])
+                    }
                 } else {
-                    await ctx.editMessageText(message, {
-                        parse_mode: 'HTML',
-                        chat_id: ctx.callbackQuery.message.chat.id,
-                        message_id: ctx.callbackQuery.message.message_id,
-                        reply_markup: keyboard.reply_markup,
-                    })
+                    // In public chats, show both buttons
+                    buttons = [
+                        [
+                            Markup.button.callback(
+                                BUTTON_LABELS.join,
+                                `join-${event.id}`
+                            ),
+                        ],
+                        [
+                            Markup.button.callback(
+                                BUTTON_LABELS.unjoin,
+                                `unjoin-${event.id}`
+                            ),
+                        ],
+                    ]
                 }
+
+                const keyboard = Markup.inlineKeyboard(buttons)
+
+                await ctx.editMessageText(message, {
+                    parse_mode: 'HTML',
+                    chat_id: ctx.callbackQuery.message.chat.id,
+                    message_id: ctx.callbackQuery.message.message_id,
+                    reply_markup: keyboard.reply_markup,
+                })
             }
 
             await ctx.answerCbQuery(
