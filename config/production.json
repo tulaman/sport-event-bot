@@ -6,7 +6,7 @@
     "DB_HOST": "run-orel-mysql-do-user-17978996-0.l.db.ondigitalocean.com",
     "DB_PORT": "25060",
     "DB_NAME": "runorel",
-    "public_channel_id": "@run_orel",
+    "public_channel_id": "-1001285034229",
     "admin_ids": [
         152033157,
         950536524
