@@ -461,6 +461,18 @@ bot.on('callback_query', async (ctx) => {
                     nickname: ctx.from.username,
                 },
             })
+
+            // Update the username in the database only if user already existed
+            if (
+                !created &&
+                (user.username !== ctx.from.first_name ||
+                    user.nickname !== ctx.from.username)
+            ) {
+                user.username = ctx.from.first_name
+                user.nickname = ctx.from.username
+                await user.save()
+            }
+
             const is_joined = await event.hasParticipant(user)
             ctx.user = user
             let is_changed = false
