@@ -848,10 +848,17 @@ const notifyParticipants = async (event, msg, params) => {
         Markup.button.callback(BUTTON_LABELS.info, `info-${event.id}`),
     ]
     for (const p of participants) {
-        await bot.telegram.sendMessage(p.telegram_id, notification, {
-            parse_mode: 'HTML',
-            reply_markup: Markup.inlineKeyboard(buttons).reply_markup,
-        })
+        try {
+            await bot.telegram.sendMessage(p.telegram_id, notification, {
+                parse_mode: 'HTML',
+                reply_markup: Markup.inlineKeyboard(buttons).reply_markup,
+            })
+        } catch (error) {
+            console.log(
+                `Failed to notify user ${p.telegram_id}: ${error.message}`
+            )
+            // Продолжаем выполнение для остальных пользователей
+        }
     }
 }
 
