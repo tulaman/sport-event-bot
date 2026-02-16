@@ -814,9 +814,6 @@ bot.on(message('text'), async (ctx) => {
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
 
-// TODO:
-// - notifications about event (1 hour before)
-
 const eventInfo = async (event) => {
     const participants = []
     for (const x of await event.getParticipants()) {
@@ -975,6 +972,70 @@ const publishTodayEvents = async (req, res) => {
     })
 }
 
+// Core function for notifying participants about upcoming events (1 hour before)
+async function notifyUpcomingEvents(respond) {
+    try {
+        const now = new Date()
+        const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+
+        // Find today's events that haven't been notified yet
+        const events = await Event.findAll({
+            where: {
+                date: {
+                    [Op.gte]: today,
+                    [Op.lt]: tomorrow,
+                },
+                notification_sent: false,
+            },
+            include: { model: User, as: 'author' },
+        })
+
+        // Filter events whose time is within the next hour
+        const upcomingEvents = events.filter((event) => {
+            const [hours, minutes] = event.time.split(':').map(Number)
+            const eventDateTime = new Date(today)
+            eventDateTime.setHours(hours, minutes, 0, 0)
+            return eventDateTime > now && eventDateTime <= oneHourLater
+        })
+
+        let notifiedCount = 0
+        for (const event of upcomingEvents) {
+            await notifyParticipants(
+                event,
+                config.messages.upcoming_event_notification
+            )
+            await event.update({ notification_sent: true })
+            notifiedCount++
+        }
+
+        await respond({ success: true, count: notifiedCount })
+    } catch (error) {
+        console.error('Error notifying upcoming events:', error)
+        await respond({ success: false })
+    }
+}
+
+// Web endpoint handler for upcoming event notifications
+const notifyUpcoming = async (req, res) => {
+    await notifyUpcomingEvents(async (result) => {
+        if (!result.success) {
+            return res.status(500).send(config.messages.web_notify_error)
+        }
+        return res.send(
+            result.count === 0
+                ? config.messages.web_no_upcoming
+                : mustache.render(config.messages.web_notify_success, {
+                      count: result.count,
+                  })
+        )
+    })
+}
+
 if (process.env.NODE_ENV === 'production') {
     // Creating the web server with webhooks
     const PORT = config.PORT || 3000
@@ -991,6 +1052,9 @@ if (process.env.NODE_ENV === 'production') {
 
     // New endpoint to publish today's events
     app.get('/publish-today-events', publishTodayEvents)
+
+    // Endpoint to notify participants about events starting within the next hour
+    app.get('/notify-upcoming-events', notifyUpcoming)
 
     // The signature
     app.get('/about', (req, res) => {

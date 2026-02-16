@@ -85,6 +85,11 @@ const Event = sequelize.define(
             type: DataTypes.INTEGER,
             allowNull: false
         },
+        notification_sent: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
         formatted_time: {
             type: DataTypes.VIRTUAL,
             get() {

@@ -152,3 +152,14 @@ publish_success: Опубликовано {{count}} мероприятий в к
 web_no_events: No events scheduled for today.
 web_publish_success: '{{count}} events published successfully.'
 web_publish_error: An error occurred while publishing events.
+
+# Уведомление за 1 час до мероприятия
+upcoming_event_notification: |
+    ⏰ Напоминание!
+    Мероприятие <b>{{event.type}}</b> начнётся через час!
+    🕐 Время: <b>{{event.formatted_time}}</b>
+    📍 Место: <b>{{event.location}}</b>
+
+web_notify_success: 'Notifications sent for {{count}} upcoming events.'
+web_no_upcoming: No upcoming events in the next hour.
+web_notify_error: An error occurred while sending notifications.
