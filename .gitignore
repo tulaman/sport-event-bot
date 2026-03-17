@@ -139,3 +139,5 @@ dependabot.yml
 !.env.vault
 
 *.sqlite
+CLAUDE.md
+.claude

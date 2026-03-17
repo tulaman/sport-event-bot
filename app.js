@@ -11,6 +11,7 @@ const {
     User,
 } = require('./db')
 const { formatDate } = require('./utils')
+const { updateUserLastBotActivity } = require('./activity_monitor')
 const mustache = require('mustache')
 const sequelize = require('sequelize')
 const Op = sequelize.Op
@@ -163,6 +164,253 @@ bot.command('announcement', async (ctx) => {
         }
         return ctx.reply(result.message)
     })
+})
+
+// Admin command to view inactive users
+bot.command('inactive', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
+
+    // Check if user is admin
+    if (!config.admin_ids?.includes(ctx.from.id)) {
+        await ctx.reply('У вас нет прав для выполнения этой команды')
+        return
+    }
+
+    try {
+        const inactiveUsers = await User.findAll({
+            where: { 
+                is_active: false,
+                is_exempt_from_activity_check: false 
+            },
+            order: [['last_message_date', 'DESC']]
+        })
+
+        if (inactiveUsers.length === 0) {
+            await ctx.reply('Нет неактивных пользователей')
+            return
+        }
+
+        let message = `📋 Неактивные пользователи (${inactiveUsers.length}):\n\n`
+        
+        for (const user of inactiveUsers) {
+            const nickname = user.nickname || user.username || 'Без имени'
+            const lastMessage = user.last_message_date ? 
+                formatDate(user.last_message_date) : 'Никогда'
+            const lastBotActivity = user.last_bot_activity_date ? 
+                formatDate(user.last_bot_activity_date) : 'Никогда'
+            
+            message += `👤 ${nickname} (@${user.username})\n`
+            message += `   💬 Последнее сообщение: ${lastMessage}\n`
+            message += `   🤖 Последняя активность в боте: ${lastBotActivity}\n`
+            message += `   🆔 ID: ${user.telegram_id}\n\n`
+        }
+
+        // Split message if too long
+        const maxLength = 4000
+        if (message.length > maxLength) {
+            const messages = []
+            let currentMessage = `📋 Неактивные пользователи (${inactiveUsers.length}):\n\n`
+            
+            for (const user of inactiveUsers) {
+                const nickname = user.nickname || user.username || 'Без имени'
+                const lastMessage = user.last_message_date ? 
+                    formatDate(user.last_message_date) : 'Никогда'
+                const lastBotActivity = user.last_bot_activity_date ? 
+                    formatDate(user.last_bot_activity_date) : 'Никогда'
+                
+                const userText = `👤 ${nickname} (@${user.username})\n` +
+                    `   💬 Последнее сообщение: ${lastMessage}\n` +
+                    `   🤖 Последняя активность в боте: ${lastBotActivity}\n` +
+                    `   🆔 ID: ${user.telegram_id}\n\n`
+                
+                if (currentMessage.length + userText.length > maxLength) {
+                    messages.push(currentMessage)
+                    currentMessage = userText
+                } else {
+                    currentMessage += userText
+                }
+            }
+            
+            if (currentMessage) {
+                messages.push(currentMessage)
+            }
+            
+            for (const msg of messages) {
+                await ctx.reply(msg)
+            }
+        } else {
+            await ctx.reply(message)
+        }
+        
+    } catch (error) {
+        console.error('Error fetching inactive users:', error)
+        await ctx.reply('Ошибка при получении списка неактивных пользователей')
+    }
+})
+
+// Admin command to exempt users from activity checks
+bot.command('exempt', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
+
+    // Check if user is admin
+    if (!config.admin_ids?.includes(ctx.from.id)) {
+        await ctx.reply('У вас нет прав для выполнения этой команды')
+        return
+    }
+
+    const args = ctx.message.text.split(' ')
+    if (args.length < 2) {
+        await ctx.reply('Использование: /exempt <username_или_telegram_id> [username2] [username3] ...')
+        return
+    }
+
+    const identifiers = args.slice(1) // Get all identifiers except the command
+    const results = []
+    
+    try {
+        for (const identifier of identifiers) {
+            let user
+            
+            // Try to find by username first (remove @ if present)
+            const username = identifier.startsWith('@') ? identifier.substring(1) : identifier
+            user = await User.findOne({ where: { username } })
+            
+            // If not found by username, try by telegram_id
+            if (!user) {
+                user = await User.findOne({ where: { telegram_id: identifier } })
+            }
+            
+            if (!user) {
+                results.push(`❌ Пользователь ${identifier} не найден`)
+                continue
+            }
+            
+            // Check if already exempt
+            if (user.is_exempt_from_activity_check) {
+                results.push(`⚠️ Пользователь ${user.nickname || user.username} уже исключен из проверки`)
+                continue
+            }
+            
+            await user.update({ is_exempt_from_activity_check: true })
+            
+            const displayName = user.nickname || user.username || 'Без имени'
+            results.push(`✅ ${displayName} (@${user.username}) исключен из проверки активности`)
+        }
+        
+        let message = `📝 Результаты обработки ${identifiers.length} пользователей:\n\n`
+        message += results.join('\n')
+        
+        await ctx.reply(message)
+        
+    } catch (error) {
+        console.error('Error exempting users:', error)
+        await ctx.reply('Ошибка при исключении пользователей из проверки активности')
+    }
+})
+
+// Admin command to remove exemption from activity checks
+bot.command('unexempt', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
+
+    // Check if user is admin
+    if (!config.admin_ids?.includes(ctx.from.id)) {
+        await ctx.reply('У вас нет прав для выполнения этой команды')
+        return
+    }
+
+    const args = ctx.message.text.split(' ')
+    if (args.length < 2) {
+        await ctx.reply('Использование: /unexempt <username_или_telegram_id> [username2] [username3] ...')
+        return
+    }
+
+    const identifiers = args.slice(1) // Get all identifiers except the command
+    const results = []
+    
+    try {
+        for (const identifier of identifiers) {
+            let user
+            
+            // Try to find by username first (remove @ if present)
+            const username = identifier.startsWith('@') ? identifier.substring(1) : identifier
+            user = await User.findOne({ where: { username } })
+            
+            // If not found by username, try by telegram_id
+            if (!user) {
+                user = await User.findOne({ where: { telegram_id: identifier } })
+            }
+            
+            if (!user) {
+                results.push(`❌ Пользователь ${identifier} не найден`)
+                continue
+            }
+            
+            // Check if already not exempt
+            if (!user.is_exempt_from_activity_check) {
+                results.push(`⚠️ Пользователь ${user.nickname || user.username} уже включен в проверку`)
+                continue
+            }
+            
+            await user.update({ is_exempt_from_activity_check: false })
+            
+            const displayName = user.nickname || user.username || 'Без имени'
+            results.push(`✅ ${displayName} (@${user.username}) включен в проверку активности`)
+        }
+        
+        let message = `📝 Результаты обработки ${identifiers.length} пользователей:\n\n`
+        message += results.join('\n')
+        
+        await ctx.reply(message)
+        
+    } catch (error) {
+        console.error('Error removing user exemption:', error)
+        await ctx.reply('Ошибка при включении пользователей в проверку активности')
+    }
+})
+
+// Admin command to view exempt users
+bot.command('exempt_list', async (ctx) => {
+    if (ctx.chat.type !== 'private') {
+        return
+    }
+
+    // Check if user is admin
+    if (!config.admin_ids?.includes(ctx.from.id)) {
+        await ctx.reply('У вас нет прав для выполнения этой команды')
+        return
+    }
+
+    try {
+        const exemptUsers = await User.findAll({
+            where: { is_exempt_from_activity_check: true },
+            order: [['username', 'ASC']]
+        })
+
+        if (exemptUsers.length === 0) {
+            await ctx.reply('Нет пользователей, исключенных из проверки активности')
+            return
+        }
+
+        let message = `🔒 Пользователи, исключенные из проверки активности (${exemptUsers.length}):\n\n`
+        
+        for (const user of exemptUsers) {
+            const displayName = user.nickname || user.username || 'Без имени'
+            message += `👤 ${displayName} (@${user.username})\n`
+            message += `   🆔 ID: ${user.telegram_id}\n\n`
+        }
+
+        await ctx.reply(message)
+        
+    } catch (error) {
+        console.error('Error fetching exempt users:', error)
+        await ctx.reply('Ошибка при получении списка исключенных пользователей')
+    }
 })
 
 // - List all runs created by me
@@ -486,12 +734,18 @@ bot.on('callback_query', async (ctx) => {
                         config.messages.joined_notification
                     )
                     is_changed = true
+                    
+                    // Update bot activity for joining event
+                    await updateUserLastBotActivity(ctx.from.id, new Date())
                 }
             } else {
                 // Remove participant only if they are in the event
                 if (is_joined) {
                     await event.removeParticipant(user)
                     is_changed = true
+                    
+                    // Update bot activity for leaving event
+                    await updateUserLastBotActivity(ctx.from.id, new Date())
                 }
             }
 
@@ -670,6 +924,9 @@ bot.on(message('text'), async (ctx) => {
         const event = new Event(ctx.session.new_event)
         await event.save()
         ctx.session.new_event['id'] = event.id
+        
+        // Update bot activity for event creation
+        await updateUserLastBotActivity(ctx.from.id, new Date())
     }
 
     // Dispatch object (all logic here)

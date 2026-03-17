@@ -10,5 +10,9 @@
     "admin_ids": [
         152033157,
         950536524
-    ]
+    ],
+    "activity_monitoring": {
+        "window_days": 30,
+        "description": "Стандартный период для production"
+    }
 }

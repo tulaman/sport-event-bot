@@ -4,5 +4,9 @@
     "WEBHOOK_DOMAIN": "https://fe50-176-194-106-56.ngrok-free.app",
     "admin_ids": [
         152033157
-    ]
+    ],
+    "activity_monitoring": {
+        "window_days": 7,
+        "description": "Более короткий период для разработки"
+    }
 }
