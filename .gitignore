@@ -141,3 +141,6 @@ dependabot.yml
 *.sqlite
 CLAUDE.md
 .claude
+
+# OpenMemory - IDE/Assistant specific rules
+.cursor/rules/openmemory.mdc
